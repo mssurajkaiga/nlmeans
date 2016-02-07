@@ -1,0 +1,68 @@
+﻿Build started 2/6/2016 10:08:52 AM.
+     1>Project "D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /Zi /nologo /W3 /WX- /sdl /O2 /Oi /GL /D WIN32 /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm- /EHa /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"x64\Release\nlmeans.pch" /Fo"x64\Release\\" /Fd"x64\Release\vc120.pdb" /Gd /TP /errorReport:prompt nlmeans.cpp
+         nlmeans.cpp
+     1>nlmeans.cpp(13): warning C4305: 'initializing' : truncation from 'double' to 'Float'
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(89): warning C4267: 'initializing' : conversion from 'size_t' to 'int', possible loss of data
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(87) : while compiling class template member function 'DenoiserOutput<T> *NLMeansDenoiser<T>::denoise(DenoiserInput<T> *,bool)'
+                 with
+                 [
+                     T=Float
+                 ]
+                 nlmeans.cpp(29) : see reference to function template instantiation 'DenoiserOutput<T> *NLMeansDenoiser<T>::denoise(DenoiserInput<T> *,bool)' being compiled
+                 with
+                 [
+                     T=Float
+                 ]
+                 nlmeans.cpp(18) : see reference to class template instantiation 'NLMeansDenoiser<Float>' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(123): warning C4267: 'argument' : conversion from 'size_t' to 'int', possible loss of data
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(82): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(81) : while compiling class template member function 'bool TBitmap<Float>::loadBitmap(std::string)'
+                 nlmeans.cpp(20) : see reference to function template instantiation 'bool TBitmap<Float>::loadBitmap(std::string)' being compiled
+                 nlmeans.cpp(19) : see reference to class template instantiation 'TBitmap<Float>' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(179): warning C4267: 'initializing' : conversion from 'size_t' to 'int', possible loss of data
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(178) : while compiling class template member function 'bool NLMeansDenoiser<Float>::initialize(DenoiserInput<T> *)'
+                 with
+                 [
+                     T=Float
+                 ]
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(96) : see reference to function template instantiation 'bool NLMeansDenoiser<Float>::initialize(DenoiserInput<T> *)' being compiled
+                 with
+                 [
+                     T=Float
+                 ]
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\eigen\src/Core/Matrix.h(235): warning C4267: 'argument' : conversion from 'size_t' to 'const int', possible loss of data
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(114) : see reference to function template instantiation 'Eigen::Matrix<int,2,1,0,2,1>::Matrix<size_t,size_t>(const T0 &,const T1 &)' being compiled
+                 with
+                 [
+                     T0=size_t
+         ,            T1=size_t
+                 ]
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(114) : see reference to function template instantiation 'Eigen::Matrix<int,2,1,0,2,1>::Matrix<size_t,size_t>(const T0 &,const T1 &)' being compiled
+                 with
+                 [
+                     T0=size_t
+         ,            T1=size_t
+                 ]
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(87) : while compiling class template member function 'DenoiserOutput<T> *NLMeansDenoiser<T>::denoise(DenoiserInput<T> *,bool)'
+                 with
+                 [
+                     T=Float
+                 ]
+                 nlmeans.cpp(29) : see reference to function template instantiation 'DenoiserOutput<T> *NLMeansDenoiser<T>::denoise(DenoiserInput<T> *,bool)' being compiled
+                 with
+                 [
+                     T=Float
+                 ]
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\x64\Release\nlmeans.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\x64\Release\nlmeans.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\x64\Release\nlmeans.lib" /MACHINE:X64 x64\Release\nlmeans.obj
+         x64\Release\stdafx.obj
+         Generating code
+         Finished generating code
+         nlmeans.vcxproj -> D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\x64\Release\nlmeans.exe
+     1>Done Building Project "D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.29

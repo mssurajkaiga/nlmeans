@@ -1,0 +1,45 @@
+﻿Build started 1/31/2016 12:25:29 PM.
+     1>Project "D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /sdl /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"Release\nlmeans.pch" /Fo"Release\\" /Fd"Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt nlmeans.cpp
+         nlmeans.cpp
+     1>nlmeans.cpp(12): warning C4305: 'initializing' : truncation from 'double' to 'Float'
+     1>nlmeans.cpp(34): warning C4244: '=' : conversion from 'double' to 'Float', possible loss of data
+     1>nlmeans.cpp(37): warning C4244: '=' : conversion from 'double' to 'Float', possible loss of data
+     1>nlmeans.cpp(46): warning C4244: '=' : conversion from 'double' to 'Float', possible loss of data
+     1>nlmeans.cpp(49): warning C4244: '=' : conversion from 'double' to 'Float', possible loss of data
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(167): warning C4018: '<' : signed/unsigned mismatch
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(141) : while compiling class template member function 'DenoiserOutput<T> *NLMeansDenoiser<T>::denoise(DenoiserInput<T> *,bool)'
+                 with
+                 [
+                     T=Float
+                 ]
+                 nlmeans.cpp(74) : see reference to function template instantiation 'DenoiserOutput<T> *NLMeansDenoiser<T>::denoise(DenoiserInput<T> *,bool)' being compiled
+                 with
+                 [
+                     T=Float
+                 ]
+                 nlmeans.cpp(63) : see reference to class template instantiation 'NLMeansDenoiser<Float>' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(168): warning C4018: '<' : signed/unsigned mismatch
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(63): warning C4018: '<' : signed/unsigned mismatch
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(47) : while compiling class template member function 'TBitmap<float>::TBitmap(TBitmap<float> *)'
+                 nlmeans.cpp(64) : see reference to function template instantiation 'TBitmap<float>::TBitmap(TBitmap<float> *)' being compiled
+                 nlmeans.cpp(64) : see reference to class template instantiation 'TBitmap<float>' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(81): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(80) : while compiling class template member function 'bool TBitmap<float>::loadBitmap(std::string)'
+                 nlmeans.cpp(65) : see reference to function template instantiation 'bool TBitmap<float>::loadBitmap(std::string)' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(75): warning C4018: '<' : signed/unsigned mismatch
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(73) : while compiling class template member function 'void TBitmap<float>::clear(void)'
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(190) : see reference to function template instantiation 'void TBitmap<float>::clear(void)' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(76): warning C4244: '=' : conversion from 'float' to 'int', possible loss of data
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\Release\nlmeans.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\Release\nlmeans.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\Release\nlmeans.lib" /MACHINE:X86 /SAFESEH Release\nlmeans.obj
+         Release\stdafx.obj
+         Generating code
+         Finished generating code
+         nlmeans.vcxproj -> D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\Release\nlmeans.exe
+     1>Done Building Project "D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.39

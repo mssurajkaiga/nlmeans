@@ -1,0 +1,58 @@
+﻿Build started 1/31/2016 12:24:29 PM.
+     1>Project "D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"Debug\nlmeans.pch" /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt nlmeans.cpp
+         nlmeans.cpp
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(12): warning C4305: 'initializing' : truncation from 'double' to 'Float'
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(34): warning C4244: '=' : conversion from 'double' to 'Float', possible loss of data
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(37): warning C4244: '=' : conversion from 'double' to 'Float', possible loss of data
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(46): warning C4244: '=' : conversion from 'double' to 'Float', possible loss of data
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(49): warning C4244: '=' : conversion from 'double' to 'Float', possible loss of data
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(167): warning C4018: '<' : signed/unsigned mismatch
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(141) : while compiling class template member function 'DenoiserOutput<T> *NLMeansDenoiser<T>::denoise(DenoiserInput<T> *,bool)'
+                 with
+                 [
+                     T=Float
+                 ]
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(74) : see reference to function template instantiation 'DenoiserOutput<T> *NLMeansDenoiser<T>::denoise(DenoiserInput<T> *,bool)' being compiled
+                 with
+                 [
+                     T=Float
+                 ]
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(63) : see reference to class template instantiation 'NLMeansDenoiser<Float>' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(168): warning C4018: '<' : signed/unsigned mismatch
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(63): warning C4018: '<' : signed/unsigned mismatch
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(47) : while compiling class template member function 'TBitmap<float>::TBitmap(TBitmap<float> *)'
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(64) : see reference to function template instantiation 'TBitmap<float>::TBitmap(TBitmap<float> *)' being compiled
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(64) : see reference to class template instantiation 'TBitmap<float>' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(81): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(80) : while compiling class template member function 'bool TBitmap<float>::loadBitmap(std::string)'
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.cpp(65) : see reference to function template instantiation 'bool TBitmap<float>::loadBitmap(std::string)' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(346): warning C4018: '<' : signed/unsigned mismatch
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(325) : while compiling class template member function 'bool NLMeansDenoiser<Float>::updateSampleVariance(const TImageBlock<float> *,TBitmap<float> *)'
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(309) : see reference to function template instantiation 'bool NLMeansDenoiser<Float>::updateSampleVariance(const TImageBlock<float> *,TBitmap<float> *)' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(384): warning C4018: '<' : signed/unsigned mismatch
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(365) : while compiling class template member function 'bool NLMeansDenoiser<Float>::getWeightedMean(const TBitmap<float> *,const TBitmap<float> *,const BitmapI *,const BitmapI *,TBitmap<float> *)'
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(312) : see reference to function template instantiation 'bool NLMeansDenoiser<Float>::getWeightedMean(const TBitmap<float> *,const TBitmap<float> *,const BitmapI *,const BitmapI *,TBitmap<float> *)' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(75): warning C4018: '<' : signed/unsigned mismatch
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(73) : while compiling class template member function 'void TBitmap<float>::clear(void)'
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(288) : see reference to function template instantiation 'void TBitmap<float>::clear(void)' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\core.h(76): warning C4244: '=' : conversion from 'float' to 'int', possible loss of data
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\util.h(55): warning C4018: '<' : signed/unsigned mismatch
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(430) : see reference to function template instantiation 'bool computeBitmapDifference<2,T>(TBitmap<T> *,TBitmap<T> *,TBitmap<T> *,const Float,bool)' being compiled
+                 with
+                 [
+                     T=Float
+                 ]
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(429) : while compiling class template member function 'bool NLMeansDenoiser<Float>::updateBufferVariance(TBitmap<float> *,TBitmap<float> *,TBitmap<float> *)'
+                 d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.h(310) : see reference to function template instantiation 'bool NLMeansDenoiser<Float>::updateBufferVariance(TBitmap<float> *,TBitmap<float> *,TBitmap<float> *)' being compiled
+     1>d:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\util.h(63): warning C4018: '<' : signed/unsigned mismatch
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\Debug\nlmeans.exe" /INCREMENTAL /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\Debug\nlmeans.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\Debug\nlmeans.lib" /MACHINE:X86 Debug\nlmeans.obj
+         Debug\stdafx.obj
+         nlmeans.vcxproj -> D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\Debug\nlmeans.exe
+     1>Done Building Project "D:\suraj\denoising mlt\nlm_cpu_denoiser\nlmeans\nlmeans\nlmeans.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:00.96

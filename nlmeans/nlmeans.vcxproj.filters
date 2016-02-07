@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Eigen">
+      <UniqueIdentifier>{4b28fa38-6550-4bdb-b9ed-0657ed8b91bc}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+    <Text Include="Eigen\CMakeLists.txt">
+      <Filter>Header Files\Eigen</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="core.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="nlmeans.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image_write.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="nlmeans.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Eigen\Array">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Cholesky">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\CholmodSupport">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Core">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Dense">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Eigen">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Eigen2Support">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Eigenvalues">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Geometry">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Householder">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\IterativeLinearSolvers">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Jacobi">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\LeastSquares">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\LU">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\MetisSupport">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\OrderingMethods">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\PardisoSupport">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\PaStiXSupport">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\QR">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\QtAlignedMalloc">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\Sparse">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\SparseCholesky">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\SparseCore">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\SparseLU">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\SparseQR">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\SPQRSupport">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\StdDeque">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\StdList">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\StdVector">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\SuperLUSupport">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\SVD">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+    <None Include="Eigen\UmfPackSupport">
+      <Filter>Header Files\Eigen</Filter>
+    </None>
+  </ItemGroup>
+</Project>
