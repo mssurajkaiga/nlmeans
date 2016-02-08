@@ -11,6 +11,8 @@ using namespace Eigen;
 
 #define STBI_FAILURE_USERMSG
 
+#define FLOAT_EPSILON 0.00000001f
+#define INT_EPSILON 1e-10
 typedef ArrayXf GeneralSpectrum;
 typedef Array3f RGBSpectrum;
 typedef RGBSpectrum Spectrum; /* modify as per need to choose appropriate representations */
@@ -32,6 +34,72 @@ enum ELogLevel {
 
 enum EBitmapType {
 	EPNG, EBMP, ETGA, EHDR
+};
+
+
+// represents a pixel
+template<typename T> class Pixel {
+public:
+	Pixel(T *data, int channels = 3) : m_channels(channels){
+		m_data = new T[channels];
+		for (int i = 0; i < channels; ++i)
+			m_data[i] = data[i];
+	}
+
+	Pixel(T r, T g, T b, T a = -1) {
+		m_channels = (a == -1) ? 3 : 4;
+		m_data = new T[m_channels];
+		m_data[0] = r;
+		m_data[1] = g;
+		m_data[2] = b;
+		if (m_channels == 4)
+			m_data[3] = a;
+	}
+
+	void clear(const T value = 0) {
+		for (int i = 0; i < m_channels; ++i)
+			m_data[i] = static_cast<T>(value);
+	}
+
+protected:
+	int m_channels; // no. of color channels
+	T* m_data;
+};
+
+// represents a patch to be denoised
+template<typename T> class Patch {
+public:
+	Patch(int width, int height, int channels, T *data = NULL) : m_width(width), m_height(height), m_channels(channels), m_data(data) {
+		m_datasize = width * height * channels;
+		if (data == NULL) {
+			m_data = new T[m_datasize];
+			clear(0.f);
+		}
+	}
+
+	inline void clear(const T value = 0.f) {
+		T *data = m_data;
+		for (int i = 0; i < m_datasize; ++i) {
+			*data++ = static_cast<T>(value);
+		}
+	}
+
+	inline Pixel* getPixel(int x, int y) {
+		T *pos = m_data[(y * m_width + x) * m_channels];
+		return new Pixel(pos, m_channels);
+	}
+
+	inline T* getData() {
+		return static_cast<T*>(m_data);
+	}
+
+	inline const T* getData() const {
+		return static_cast<T*>(m_data);
+	}
+
+private:
+	int m_width, m_height, m_channels, m_datasize;
+	T *m_data;
 };
 
 
@@ -71,10 +139,10 @@ public:
 	const int getChannelCount() const { return channels; }
 	T* getData() { return static_cast<T*>(data); }
 	const T* getData() const { return static_cast<T*>(data); }
-	void clear() {
+	void clear(const T value = 0.f) {
 		T *thisdata = static_cast<T*>(data);
 		for (size_t i = 0; i < w*h*channels; ++i) {
-			*thisdata++ = 0.f;
+			*thisdata++ = static_cast<T>(value);
 		}
 	}
 
