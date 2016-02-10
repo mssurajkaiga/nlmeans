@@ -10,7 +10,7 @@
 int _tmain(int argc, char* argv[])
 {
 	int r = 5, f = 2;
-	Float k = 10, sigma = 0.4;
+	Float k = 0.55, sigma = 0.4;
 	bool dump = true;
 	//std::string inputfile="test\\input_1_sigma_40.hdr" , outputfile="test\\output_1_4_17_10_denoised_3", extension=".hdr";
 	std::string inputfile = "test\\noisy_alley_small.hdr", outputfile = "test\\denoised_alley_small", extension = ".hdr";
@@ -31,5 +31,6 @@ int _tmain(int argc, char* argv[])
 	dumpMap<Float>(dOutput->getDenoisedImage()->getBitmap(), outputfile, EHDR);
 	input->unloadBitmap();
 	std::cin.get();
+	_CrtDumpMemoryLeaks(); // prints mem leaks
 	return 0;
 }

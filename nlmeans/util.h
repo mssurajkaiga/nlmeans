@@ -71,7 +71,7 @@ template<int C = 1, typename T> inline bool computeBitmapDifference(TBitmap<T> *
 		*destO = output->getData();
 
 	if (C == 1)
-		for (size_t i = 0; i < size(0) * size(1); ++i) {
+		for (int i = 0; i < size(0) * size(1); ++i) {
 			for (int k = 0; k < channels; ++k) {
 				*destO++ = absolute ? abs(*destA - *destB) * scale : (*destA - *destB) * scale;
 				++destA;
@@ -79,13 +79,87 @@ template<int C = 1, typename T> inline bool computeBitmapDifference(TBitmap<T> *
 			}
 		}
 	else
-		for (size_t i = 0; i < size(0) * size(1); ++i) {
+		for (int i = 0; i < size(0) * size(1); ++i) {
 			for (int k = 0; k < channels; ++k) {
 				*destO++ = absolute ? pow(abs(*destA - *destB), C) * scale : pow(*destA - *destB, C) * scale;
 				++destA;
 				++destB;
 			}
 		}
+
+	return true;
+}
+
+
+//utility function to scale Bitmap using another Bitmap
+template<typename T, typename I> bool scaleBitmap(const TBitmap<T> *input, const TBitmap<I> *scale, TBitmap<T> *output) {
+
+	const int &channels = input->getChannelCount();
+	const int &sChannels = scale->getChannelCount();
+	const Vector2i &size = input->getSize();
+	if (scale->getSize() != size || output->getSize() != size)
+		return false;
+	if (output->getChannelCount() != channels)
+		return false;
+
+	const T *dest1 = input->getData(),
+	const I	*dest2 = scale->getData();
+	T *destO = output->getData();
+
+	if (sChannels == channels) {
+		for (int i = 0; i < size(0) * size(1); ++i)
+			for (int k = 0; k < channels; ++k)
+				*destO++ = (*dest1++ * static_cast<T>(*dest2++));
+	}
+	else if (sChannels == 1) {
+		for (int i = 0; i < size(0) * size(1); ++i, ++dest2)
+			for (int k = 0; k < channels; ++k)
+				*destO++ = (*dest1++ * static_cast<T>(*dest2));
+	}
+	else
+		return false;
+
+	return true;
+}
+
+//utility function to normalize Bitmap using another Bitmap
+template<typename T, typename I> bool normalizeBitmap(const TBitmap<T> *input, const TBitmap<I> *normal, TBitmap<T> *output) {
+
+	const int &channels = input->getChannelCount();
+	const int &sChannels = normal->getChannelCount();
+	const Vector2i &size = input->getSize();
+	if (normal->getSize() != size || output->getSize() != size)
+		return false;
+	if (output->getChannelCount() != channels)
+		return false;
+
+	const T *dest1 = input->getData();
+	const I	*dest2 = normal->getData();
+	T *destO = output->getData();
+
+	if (sChannels == channels) {
+		for (int i = 0; i < size(0) * size(1); ++i)
+			for (int k = 0; k < channels; ++k) {
+				T den = static_cast<T>(*dest2++);
+				if (den > 0.f)
+					*destO++ = *dest1++ / den;
+				else
+					*destO++ = *dest1++;
+			}
+	}
+	else if (sChannels == 1) {
+		for (int i = 0; i < size(0) * size(1); ++i, ++dest2) {
+			T den = static_cast<T>(*dest2);
+			for (int k = 0; k < channels; ++k) {
+				if (den > 0.f)
+					*destO++ = *dest1++ / den;
+				else
+					*destO++ = *dest1++;
+			}
+		}
+	}
+	else
+		return false;
 
 	return true;
 }

@@ -61,6 +61,10 @@ public:
 			m_data[i] = static_cast<T>(value);
 	}
 
+	~Pixel() {
+		delete[] m_data;
+	}
+
 protected:
 	int m_channels; // no. of color channels
 	T* m_data;
@@ -70,10 +74,23 @@ protected:
 template<typename T> class Patch {
 public:
 	Patch(int width, int height, int channels, T *data = NULL) : m_width(width), m_height(height), m_channels(channels), m_data(data) {
+		m_size = Vector2i(width, height);
 		m_datasize = width * height * channels;
 		if (data == NULL) {
 			m_data = new T[m_datasize];
-			clear(0.f);
+			clear();
+		}
+	}
+
+	Patch(const Patch &input) {
+		m_width = input.getSize()(0);
+		m_height = input.getSize()(1);
+		m_channels = input.getChannelCount();
+		m_datasize = m_width * m_height * m_channels;
+		m_data = new T[m_datasize];
+		T *data = input.getData();
+		for (int i = 0; i < m_datasize; ++i) {
+			*m_data++ = *data++;
 		}
 	}
 
@@ -84,9 +101,9 @@ public:
 		}
 	}
 
-	inline Pixel* getPixel(int x, int y) {
+	inline Pixel<T>* getPixel(int x, int y) {
 		T *pos = m_data[(y * m_width + x) * m_channels];
-		return new Pixel(pos, m_channels);
+		return new Pixel<T>(pos, m_channels);
 	}
 
 	inline T* getData() {
@@ -97,8 +114,19 @@ public:
 		return static_cast<T*>(m_data);
 	}
 
+	Vector2i getSize() { return m_size; }
+	const Vector2i getSize() const { return m_size; }
+	Vector2i getChannelCount() { return m_channels; }
+	const Vector2i getChannelCount() const { return m_channels; }
+
+	~Patch() { 
+		if (m_data!=NULL)
+			delete[] m_data;
+	}
+
 private:
 	int m_width, m_height, m_channels, m_datasize;
+	Vector2i m_size;
 	T *m_data;
 };
 
@@ -110,8 +138,10 @@ public:
 		size = Vector2i(w, h);
 		if (d != NULL)
 			data = (void*)d;
-		else
+		else {
 			data = new T[w * h * channels];
+			clear();
+		}
 	}
 	TBitmap(TBitmap<T> *input = NULL) {
 		if (input == NULL) {
@@ -129,7 +159,19 @@ public:
 		T* inputdata = input->getData();
 		data = static_cast<void *>(new T[w*h*channels]);
 		T* thisdata = static_cast<T*>(data);
-		for (size_t i = 0; i < w*h*channels; ++i) {
+		for (int i = 0; i < w*h*channels; ++i) {
+			*thisdata++ = *inputdata++;
+		}
+	}
+	TBitmap(const TBitmap<T> &input) {
+		w = input.getSize()(0);
+		h = input.getSize()(1);
+		size = input.getSize();
+		channels = input.getChannelCount();
+		T* inputdata = input.getData();
+		data = static_cast<void *>(new T[w*h*channels]);
+		T* thisdata = static_cast<T*>(data);
+		for (int i = 0; i < w*h*channels; ++i) {
 			*thisdata++ = *inputdata++;
 		}
 	}
@@ -139,9 +181,9 @@ public:
 	const int getChannelCount() const { return channels; }
 	T* getData() { return static_cast<T*>(data); }
 	const T* getData() const { return static_cast<T*>(data); }
-	void clear(const T value = 0.f) {
+	void clear(const T value = 0) {
 		T *thisdata = static_cast<T*>(data);
-		for (size_t i = 0; i < w*h*channels; ++i) {
+		for (int i = 0; i < w*h*channels; ++i) {
 			*thisdata++ = static_cast<T>(value);
 		}
 	}
@@ -184,11 +226,16 @@ typedef TBitmap<Uchar> BitmapC;
 
 template<typename T> class TImageBlock {
 public:
-	TImageBlock(Point2i offset, Vector2i size, int border, bool warn = false, TBitmap<T> *bitmap = NULL/*,
-		BitmapI *sppbitmap = NULL, TBitmap<T> *varbitmap = NULL, TBitmap<T> *varsbitmap = NULL*/) : m_offset(offset),
-		m_size(size), m_borderSize(border), m_warn(warn), m_bitmap(bitmap)//, m_sppbitmap(sppbitmap),
+	TImageBlock(Point2i offset, Vector2i size, int border, bool warn = false, TBitmap<T> *bitmap = NULL,
+		BitmapI *sppbitmap = NULL/*, TBitmap<T> *varbitmap = NULL, TBitmap<T> *varsbitmap = NULL*/) : m_offset(offset),
+		m_size(size), m_borderSize(border), m_warn(warn), m_bitmap(bitmap), m_sppbitmap(sppbitmap)//,
 		//m_varbitmap(varbitmap), m_varsbitmap(varsbitmap) 
-	{}
+	{
+		if (bitmap == NULL)
+			m_bitmap = new TBitmap<T>(size(0), size(1), 3);
+		if (sppbitmap == NULL)
+			m_sppbitmap = new BitmapI(size(0), size(1), 1);
+	}
 
 	TImageBlock(TImageBlock<T> *input) {
 		m_offset = input->getOffset();
@@ -196,8 +243,19 @@ public:
 		m_borderSize = input->getBorderSize();
 		m_warn = input->getWarn();
 		m_bitmap = new TBitmap<T>(input->getBitmap());
-		/*m_sppbitmap = new TBitmap<int>(input->getSppBitmap());
-		m_varbitmap = new TBitmap<T>(input->getVarBitmap());
+		m_sppbitmap = new BitmapI(input->getSppBitmap());
+		/*m_varbitmap = new TBitmap<T>(input->getVarBitmap());
+		m_varsbitmap = new TBitmap<T>(input->getVarsBitmap());*/
+	}
+
+	TImageBlock(const TImageBlock<T> &input) {
+		m_offset = input.getOffset();
+		m_size = input.getSize();
+		m_borderSize = input.getBorderSize();
+		m_warn = input.getWarn();
+		m_bitmap = new TBitmap<T>(input.getBitmap());
+		m_sppbitmap = new BitmapI(input.getSppBitmap());
+		/*m_varbitmap = new TBitmap<T>(input->getVarBitmap());
 		m_varsbitmap = new TBitmap<T>(input->getVarsBitmap());*/
 	}
 
@@ -234,11 +292,12 @@ public:
 	/// Return a pointer to the underlying bitmap representation
 	inline TBitmap<T>* getBitmap() { return m_bitmap; }
 	inline const TBitmap<T>* getBitmap() const { return m_bitmap; }
-/*
+
 	/// Return a pointer to the underlying bitmap representation
 	inline TBitmap<int>* getSppBitmap() { return m_sppbitmap; }
 	inline const TBitmap<int>* getSppBitmap() const{ return m_sppbitmap; }
 
+/*
 	/// Return a pointer to the underlying variance bitmap representation
 	inline TBitmap<T>* getVarBitmap() { return m_varbitmap; }
 	inline const TBitmap<T>* getVarBitmap() const { return m_varbitmap; }
@@ -250,9 +309,13 @@ public:
 	/// Clear everything to zero
 	inline void clear() {
 		m_bitmap->clear();
-		//m_sppbitmap->clear();
+		m_sppbitmap->clear();
 		//m_varbitmap->clear();
 		//m_varsbitmap->clear();
+	}
+	~TImageBlock() {
+		delete m_bitmap;
+		delete m_sppbitmap;
 	}
 
 protected:
@@ -264,7 +327,7 @@ protected:
 	/* Stores samples-per-pixel, per-pixel variance, squared variance
 	*/
 	TBitmap<T> *m_bitmap;// , *m_varbitmap, *m_varsbitmap;
-	//TBitmap<int> *m_sppbitmap;
+	TBitmap<int> *m_sppbitmap;
 };
 
 typedef TImageBlock<float> ImageBlockF;

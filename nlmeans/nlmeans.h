@@ -1,6 +1,12 @@
 #ifndef _NLMEANS_H_
 #define _NLMEANS_H_
 
+//mem leak checking
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+
+
 #include "core.h"
 #include "util.h"
 
@@ -84,7 +90,15 @@ public:
 		//Log(ECustom, "NOTE: DENOISER USES CROSS FILTERING ONLY WITH SAMPLE BITMAP AND USES SCALED MEAN SAMPLE VARIANCE BITMAP");
 	}
 
-	DenoiserOutput<T>* denoise(DenoiserInput<T> *in, bool progressbar = true) {
+	DenoiserOutput<T>* denoise(DenoiserInput<T> *in, bool patchbased = true, bool progressbar = true) {
+		if (patchbased)
+			return patchBasedDenoise(in, progressbar);
+		else
+			return pixelBasedDenoise(in, progressbar);
+	}
+
+
+	DenoiserOutput<T>* pixelBasedDenoise(DenoiserInput<T> *in, bool progressbar = true) {
 		bool check = false;
 		int inputcount = in->getImageBlocks().size();
 		assert(inputcount > 0);
@@ -106,10 +120,10 @@ public:
 		int channelcountA = m_imageblockA->getChannelCount();
 		std::clock_t start = std::clock();
 			// for each pixel compute weighted average from pixels in window
-		for (size_t y = 0; y < m_size(1); ++y) {// iterate through each pixel in imageblock ignoring boundaries
+		for (int y = 0; y < m_size(1); ++y) {// iterate through each pixel in imageblock ignoring boundaries
 	#pragma omp parallel for
 			{
-				for (size_t x = 0; x < m_size(0); ++x) {
+				for (int x = 0; x < m_size(0); ++x) {
 					// pixel being filtered
 					const Point2i p(x, y);
 					Float weightSumA = 0.f;
@@ -173,7 +187,7 @@ public:
 		return out;
 	}
 
-	DenoiserOutput<T>* patchBasedDenoise((DenoiserInput<T> *in, bool progressbar = true) {
+	DenoiserOutput<T>* patchBasedDenoise(DenoiserInput<T> *in, bool progressbar = true) {
 		bool check = false;
 		int inputcount = in->getImageBlocks().size();
 		assert(inputcount > 0);
@@ -187,29 +201,30 @@ public:
 
 		std::string basefilename = in->getBaseFilename();
 		TBitmap<T> *output = out->getDenoisedImage()->getBitmap();
+		// use spp bitmap to store denoised values per pixel
+		BitmapI *valuesPerPixel = out->getDenoisedImage()->getSppBitmap();
 		T *outdata = output->getData();
+		int *sppdata = valuesPerPixel->getData();
 		int outchannelcount = output->getChannelCount();
+		const T *bitmapData = m_imageblockA->getBitmap()->getData();
 
 		// progress reporting!
 		Float progress = 0.f, inc = 100.f / static_cast<Float>(m_size(0)*m_size(1));
 		int channelcountA = m_imageblockA->getChannelCount();
 		std::clock_t start = std::clock();
+
 		// for each pixel compute weighted average from pixels in window
-		for (size_t y = 0; y < m_size(1); ++y) {// iterate through each pixel in imageblock ignoring boundaries
-#pragma omp parallel for
+		for (int y = 0; y < m_size(1); ++y) {// iterate through each pixel in imageblock ignoring boundaries
+//#pragma omp parallel for
 			{
 				// patch to be denoised
-				Patch<T> *denoisedPatch = new Patch<T>(m_f, m_f, channelcountA);
-				const T *bitmapData = m_imageblockA->getBitmap()->getData();
+				Patch<T> *denoisedPatch = new Patch<T>(m_patchsize, m_patchsize, channelcountA);
 				T *denoisedData = denoisedPatch->getData();
 
-				for (size_t x = 0; x < m_size(0); ++x) {
+				for (int x = 0; x < m_size(0); ++x) {
 					// pixel being filtered
 					const Point2i p(x, y);
 					Float weightSumA = 0.f, maxWeightA = 0.f;
-					Float *filteredValueA = new Float[channelcountA];
-					for (int i = 0; i < channelcountA; ++i)
-						filteredValueA[i] = 0.f;
 
 					// clear denoised patch
 					denoisedPatch->clear(0.f);
@@ -226,7 +241,7 @@ public:
 
 					for (int j = jmin; j <= jmax; ++j)
 						for (int i = imin; i <= imax; ++i)
-							if (i != x || j != y) {
+							if (i != x && j != y) {
 								const Point2i q(i, j);
 
 								//float fDif = fiL2FloatDist(fpI, fpI, x, y, i, j, m_f0, iChannels, m_size(0), m_size(0));
@@ -237,26 +252,26 @@ public:
 
 								//float fWeight = wxSLUT(fDif, fpLut);
 
-								Float weightA = computeNeighborWeightContribution(m_imageblockA->getBitmap(), p, q);
+								Float weightA = computeNeighborWeightContribution(m_imageblockA->getBitmap(), p, q, m_f0);
 
 								if (weightA > maxWeightA)
-									maxWeight = weightA;
+									maxWeightA = weightA;
 								weightSumA += weightA;
 
 								for (int is = -m_f0; is <= m_f0; ++is) {
-									int aiindex = ((m_f + is) * m_patchsize + m_f ) * channelcountA;
+									int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
 									int ail = ((j + is)*m_size(0) + i) * channelcountA;
 
 									for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
 										int iindex = aiindex + ir;
 										int il = ail + ir;
-										denoisedData[iindex] += weightA * bitmapData[il];W
+										denoisedData[iindex] += weightA * bitmapData[il];
 									}
 								}
 							}
 
 
-					// current patch with fMaxWeight
+					// current patch with maxWeight
 					for (int is = -m_f0; is <= m_f0; ++is) {
 						int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
 						int ail = ((y + is)*m_size(0) + x) * channelcountA;
@@ -264,51 +279,48 @@ public:
 						for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
 							int iindex = aiindex + ir;
 							int il = ail + ir;
-							denoisedData[iindex] += maxWeightA * bitmapData[il]; W
+							denoisedData[iindex] += maxWeightA * bitmapData[il];
 						}
 					}
-					weighSumA += maxWeightA;
+					weightSumA += maxWeightA;
 
 					// normalize average value when fTotalweight is not near zero
 					if (weightSumA > FLOAT_EPSILON) {
 
 						for (int is = -m_f0; is <= m_f0; ++is) {
 							int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
-							int ail = ((y + is)*m_size(0) + x) * channelcountA;
+							int ail0 = (y + is)*m_size(0) + x;
+							int ail = ail0 * channelcountA;
 
-							for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
-								int iindex = aiindex + ir;
-								int il = ail + ir;
-								denoisedData[iindex] += maxWeightA * bitmapData[il]; W
+							for (int ir = -m_f0 ; ir <= m_f0; ++ir) {
+								int iindex = aiindex + ir * channelcountA;
+								int il0 = ail0 + ir;
+								int il = il0 * channelcountA;
+
+								++sppdata[il0];
+								outdata[il] = denoisedData[iindex] / weightSumA;
 							}
 						}
-
-
-
-						for (int is = -m_f0; is <= m_f0; is++) {
-							int aiindex = (m_f + is) * m_patchsize + m_f;
-							int ail = (y + is)*m_size(0) + x;
-
-							for (int ir = -m_f0; ir <= m_f0; ir++) {
-								int iindex = aiindex + ir;
-								int il = ail + ir;
-
-								fpCount[il]++;
-
-								for (int ii = 0; ii < iChannels; ii++) {
-									fpO[ii][il] += fpODenoised[ii][iindex] / fTotalWeight;
-
-								}
-
-							}
-						}
-
-
 					}
 
-
+					if (progressbar) {
+						progress += inc;
+						std::cout << progress << " % denoised \r";
+					}
+				}
+				delete denoisedPatch;
 			}
 		}
+
+		
+		// normalize output according to no. of denoised values used per pixel
+		if (!normalizeBitmap<T, int>(output, valuesPerPixel, output)) {
+			std::cout << "\nError : Normalization of denoised bitmap failed!\n";
+		}
+
+		out->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
+		return out;
+
 	}
 
 
@@ -331,9 +343,7 @@ private:
 
 	bool isInitialized() const { return m_isinitialized; }
 
-	
-
-	//loop through each pixel in patch and compute neighbor pixel contribution
+	// for pixel based weight computation
 	template<typename T> Float computeNeighborWeightContribution(const TBitmap<T> *bitmap/*, const TBitmap<T> *varbitmap*/, const Point2i &p, const Point2i &q) const {
 		Float patchDistance = 0.f;
 		const Vector2i size = bitmap->getSize();
@@ -345,8 +355,15 @@ private:
 		patchDistance = computePatchDistance(bitmap, p, q, width);
 		
 		//return exp(-std::max(0.f, patchDistance));
-		//return exp(-std::max(0.f, patchDistance - 2.f * m_sigma2)/m_h2);
-		return exp(-patchDistance/m_h2);
+		return exp(-std::max(0.f, patchDistance - 2.f * m_sigma2)/m_h2);
+		//return exp(-patchDistance/m_h2);
+	}
+
+	// for patch based weight computation
+	template<typename T> Float computeNeighborWeightContribution(const TBitmap<T> *bitmap/*, const TBitmap<T> *varbitmap*/, const Point2i &p, const Point2i &q, int width) const {
+		Float patchDistance = computePatchDistance(bitmap, p, q, width);
+		return exp(-std::max(0.f, patchDistance - 2.f * m_sigma2) / m_h2);
+		//return exp(-patchDistance/m_h2);
 	}
 
 	template<typename T> inline Float computePatchDistance(const TBitmap<T> *bitmap,// const TBitmap<T> *varbitmap,
