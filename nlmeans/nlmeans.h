@@ -17,7 +17,7 @@
 #include <iostream>
 #include <ctime>
 
-template<typename T> class NLMeansDenoiser;
+template<typename I, typename O> class NLMeansDenoiser;
 
 template<typename T> class DenoiserInput {
 	// Generic class to encapsulate denoiser input - useful since different denoisers have
@@ -38,7 +38,6 @@ public:
 	void addImageBlock(TImageBlock<T>* imageblock) { m_imageblocks.push_back(imageblock); }
 
 protected:
-	friend class NLMeansDenoiser<T>;
 	~DenoiserInput() {}
 protected:
 	bool m_isinitialized;
@@ -50,22 +49,25 @@ template<typename T> class DenoiserOutput {
 	// Generic class to encapsulate denoiser output including statistics for next iteration
 	// in case of iterative denoising
 public:
+	long m_denoiseduration; // time in milliseconds to denoise the input
 	DenoiserOutput(TImageBlock<T> *denoisedoutput = NULL) : m_denoisedimage(denoisedoutput) {}
-	DenoiserOutput(DenoiserInput<T> *denoiserinput) {
+	/*DenoiserOutput(DenoiserInput<T> *denoiserinput) {
+		m_denoisedimage = new TImageBlock<T>(denoiserinput->getImageBlocks()[0]);
+		m_denoisedimage->clear();
+	}*/
+	template<typename O> DenoiserOutput(DenoiserInput<O> *denoiserinput) {
 		m_denoisedimage = new TImageBlock<T>(denoiserinput->getImageBlocks()[0]);
 		m_denoisedimage->clear();
 	}
 	inline TImageBlock<T>* getDenoisedImage() { return m_denoisedimage; }
 	inline long getDenoiseDuration() { return m_denoiseduration; }
 protected:
-	friend class NLMeansDenoiser<T>;
 	virtual ~DenoiserOutput() {}
 protected:
 	TImageBlock<T>* m_denoisedimage;
-	long m_denoiseduration; // time in milliseconds to denoise the input
 };
 
-template<typename T> class NLMeansDenoiser {
+template<typename I, typename O> class NLMeansDenoiser {
 public:
 	NLMeansDenoiser(int r = 7, int f = 3, float k = 0.45, float sigma= 1.0, int vr = 1, bool dumpm=true) : m_r(r), m_f(f), m_k(k),
 				 m_sigma(sigma), m_dumpmaps(dumpm) {
@@ -73,7 +75,7 @@ public:
 		m_windowsize = 2 * m_r + 1;
 		m_patchsize = 2 * m_f + 1;
 		m_sigma2 = m_sigma * m_sigma; // variance (sigma squared)
-		m_h2 = m_k * m_k * m_sigma2; // filteri parameter squared
+		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared
 		m_isinitialized = false;
 
 		dump();
@@ -90,29 +92,28 @@ public:
 		//Log(ECustom, "NOTE: DENOISER USES CROSS FILTERING ONLY WITH SAMPLE BITMAP AND USES SCALED MEAN SAMPLE VARIANCE BITMAP");
 	}
 
-	DenoiserOutput<T>* denoise(DenoiserInput<T> *in, bool patchbased = true, bool progressbar = true) {
+	DenoiserOutput<O>* denoise(DenoiserInput<I> *in, bool patchbased = true, bool progressbar = true) {
 		if (patchbased)
-			return patchBasedDenoise(in, progressbar);
+			return patchBasedDenoise<I, O>(in, progressbar);
 		else
 			return pixelBasedDenoise(in, progressbar);
 	}
 
 
-	DenoiserOutput<T>* pixelBasedDenoise(DenoiserInput<T> *in, bool progressbar = true) {
+	DenoiserOutput<O>* pixelBasedDenoise(DenoiserInput<I> *in, bool progressbar = true) {
 		bool check = false;
 		int inputcount = in->getImageBlocks().size();
 		assert(inputcount > 0);
-		TImageBlock<T>* denoised = new TImageBlock<T>(in->getImageBlocks()[0]);
+		TImageBlock<I>* denoised = new TImageBlock<I>(in->getImageBlocks()[0]);
 		denoised->clear();
-		DenoiserOutput<T>* out = new DenoiserOutput<T>(denoised);
 
 		if (!m_isinitialized)
 			check = initialize(in);
 		assert(check);
 
 		std::string basefilename = in->getBaseFilename();
-		TBitmap<T> *output = out->getDenoisedImage()->getBitmap();
-		T *outdata = output->getData();
+		TBitmap<I> *output = denoised->getBitmap();
+		I *outdata = output->getData();
 		int outchannelcount = output->getChannelCount();
 
 		// progress reporting!
@@ -183,30 +184,30 @@ public:
 				}
 			}
 		}
-			out->m_denoiseduration = (std::clock() - start)/CLOCKS_PER_SEC;
-		return out;
+			DenoiserOutput<O> *finaloutput = new DenoiserOutput<O>(denoised);
+			finaloutput->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
+			return finaloutput;
 	}
 
-	DenoiserOutput<T>* patchBasedDenoise(DenoiserInput<T> *in, bool progressbar = true) {
+	template<typename I, typename O> DenoiserOutput<O>* patchBasedDenoise(DenoiserInput<I> *in, bool progressbar = true) {
 		bool check = false;
 		int inputcount = in->getImageBlocks().size();
 		assert(inputcount > 0);
-		TImageBlock<T>* denoised = new TImageBlock<T>(in->getImageBlocks()[0]);
+		TImageBlock<I>* denoised = new TImageBlock<I>(in->getImageBlocks()[0]);
 		denoised->clear();
-		DenoiserOutput<T>* out = new DenoiserOutput<T>(denoised);
 
 		if (!m_isinitialized)
 			check = initialize(in);
 		assert(check);
 
 		std::string basefilename = in->getBaseFilename();
-		TBitmap<T> *output = out->getDenoisedImage()->getBitmap();
+		TBitmap<I> *output = denoised->getBitmap();
 		// use spp bitmap to store denoised values per pixel
-		BitmapI *valuesPerPixel = out->getDenoisedImage()->getSppBitmap();
-		T *outdata = output->getData();
+		BitmapI *valuesPerPixel = denoised->getSppBitmap();
+		I *outdata = output->getData();
 		int *sppdata = valuesPerPixel->getData();
 		int outchannelcount = output->getChannelCount();
-		const T *bitmapData = m_imageblockA->getBitmap()->getData();
+		const I *bitmapData = m_imageblockA->getBitmap()->getData();
 
 		// progress reporting!
 		Float progress = 0.f, inc = 100.f / static_cast<Float>(m_size(0)*m_size(1));
@@ -218,8 +219,8 @@ public:
 //#pragma omp parallel for
 			{
 				// patch to be denoised
-				Patch<T> *denoisedPatch = new Patch<T>(m_patchsize, m_patchsize, channelcountA);
-				T *denoisedData = denoisedPatch->getData();
+				Patch<I> *denoisedPatch = new Patch<I>(m_patchsize, m_patchsize, channelcountA);
+				I *denoisedData = denoisedPatch->getData();
 
 				for (int x = 0; x < m_size(0); ++x) {
 					// pixel being filtered
@@ -298,7 +299,8 @@ public:
 								int il = il0 * channelcountA;
 
 								++sppdata[il0];
-								outdata[il] = denoisedData[iindex] / weightSumA;
+								for (int k = 0; k < channelcountA; ++k)
+									outdata[il++] = denoisedData[iindex++] / weightSumA;
 							}
 						}
 					}
@@ -314,25 +316,29 @@ public:
 
 		
 		// normalize output according to no. of denoised values used per pixel
-		if (!normalizeBitmap<T, int>(output, valuesPerPixel, output)) {
+		if (!normalizeBitmap<O, int>(output, valuesPerPixel, output)) {
 			std::cout << "\nError : Normalization of denoised bitmap failed!\n";
 		}
 
-		out->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
-		return out;
+		DenoiserOutput<O> *finaloutput = new DenoiserOutput<O>(denoised);
+		finaloutput->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
+		return finaloutput;
 
 	}
 
 
 private:
 	// check validity of input, allocate space for temporary bitmaps and generate pre-denoising bitmaps
-	bool initialize(DenoiserInput<T> *in) {
+	bool initialize(DenoiserInput<I> *in) {
 		int inputcount = in->getImageBlocks().size();
 		if (inputcount > 0) {
 			m_imageblockA = in->getImageBlocks()[0];
+			I scale = computeNormalizationConstant(m_imageblockA->getBitmap());
 			m_size = m_imageblockA->getSize();
-			m_sigma2 *= m_imageblockA->getChannelCount(); // normalizing the parameters
-			m_h2 *= m_imageblockA->getChannelCount(); // normalizing the parameters
+			m_sigma *= scale;
+			m_sigma2 *= m_imageblockA->getChannelCount() * scale * scale; // normalizing the parameters
+			m_h2 *= m_imageblockA->getChannelCount() * scale * scale; // normalizing the parameters
+			std::cout << "Notmalization scale of data = " << scale << "\n";
 			return true;
 		}
 		m_imageblockA = NULL;
@@ -343,8 +349,24 @@ private:
 
 	bool isInitialized() const { return m_isinitialized; }
 
+	// compute the normalization scale required for parameters by looking at range of data in image
+	template<typename I> Float computeNormalizationConstant(const TBitmap<I> *input) {
+		Vector2i size = input->getSize();
+		int channels = input->getChannelCount();
+		const I *data = input->getData();
+		I maxValue = static_cast<I>(0), minValue = static_cast<I>(0);
+		for (int i = 0; i < size(0) * size(1) * channels; ++i, ++data) {
+			if (maxValue < *data)
+				maxValue = *data;
+			if (minValue > *data)
+				minValue = *data;
+		}
+		std::cout << "max = " << maxValue << ", min = " << minValue << "\n";
+		return static_cast<Float>(maxValue - minValue);
+	}
+
 	// for pixel based weight computation
-	template<typename T> Float computeNeighborWeightContribution(const TBitmap<T> *bitmap/*, const TBitmap<T> *varbitmap*/, const Point2i &p, const Point2i &q) const {
+	template<typename I> Float computeNeighborWeightContribution(const TBitmap<I> *bitmap/*, const TBitmap<I> *varbitmap*/, const Point2i &p, const Point2i &q) const {
 		Float patchDistance = 0.f;
 		const Vector2i size = bitmap->getSize();
 
@@ -360,13 +382,13 @@ private:
 	}
 
 	// for patch based weight computation
-	template<typename T> Float computeNeighborWeightContribution(const TBitmap<T> *bitmap/*, const TBitmap<T> *varbitmap*/, const Point2i &p, const Point2i &q, int width) const {
+	template<typename I> Float computeNeighborWeightContribution(const TBitmap<I> *bitmap/*, const TBitmap<I> *varbitmap*/, const Point2i &p, const Point2i &q, int width) const {
 		Float patchDistance = computePatchDistance(bitmap, p, q, width);
 		return exp(-std::max(0.f, patchDistance - 2.f * m_sigma2) / m_h2);
 		//return exp(-patchDistance/m_h2);
 	}
 
-	template<typename T> inline Float computePatchDistance(const TBitmap<T> *bitmap,// const TBitmap<T> *varbitmap,
+	template<typename I> inline Float computePatchDistance(const TBitmap<I> *bitmap,// const TBitmap<I> *varbitmap,
 		const Point2i &p, const Point2i &q, int width = -1) const {
 		const Float *baseimageblockAdata = bitmap->getData();
 		Vector2i size = bitmap->getSize();
@@ -381,7 +403,7 @@ private:
 			int offsetQ = (q(0) + size(0) * q(1)) * stride;
 			const Float *pvalue = baseimageblockAdata + offsetP;
 			const Float *qvalue = baseimageblockAdata + offsetQ;
-			return perPixelsquaredDistance(*pvalue, *qvalue) / static_cast<Float>(stride);
+			return perPixelsquaredDistance(*pvalue, *qvalue) / static_cast<Float>(patchwidth * patchwidth);
 		}
 
 		const Point2i patchminP(p(0) - width, p(1) - width), patchmaxP(p(0) + width, p(1) + width);
@@ -402,7 +424,7 @@ private:
 			offsetQ += xincrement;
 		}
 
-		patchDistance /= static_cast<Float>(stride * patchwidth * patchwidth);
+		patchDistance /= static_cast<Float>(patchwidth * patchwidth);
 		return patchDistance;
 	}
 
@@ -415,7 +437,7 @@ private:
 	int m_r, m_f;
 	Float m_k, m_sigma, m_sigma2, m_h2;
 	int m_windowsize, m_patchsize; // m_windowsize = 2r + 1, m_patchsize = 2f + 1
-	const TImageBlock<T> *m_imageblockA, *m_imageblockB;
+	const TImageBlock<I> *m_imageblockA, *m_imageblockB;
 	Vector2i m_size;
 	bool m_isinitialized, m_dumpmaps;
 };

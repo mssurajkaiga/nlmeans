@@ -134,7 +134,7 @@ private:
 //generic bitmap data class
 template<typename T> class TBitmap {
 public:
-	TBitmap(int w, int h, int comp, const T *d = NULL) :w(w), h(h), channels(comp) {
+	TBitmap(int w, int h, int comp, const T *d = NULL) : w(w), h(h), channels(comp) {
 		size = Vector2i(w, h);
 		if (d != NULL)
 			data = (void*)d;
@@ -143,6 +143,17 @@ public:
 			clear();
 		}
 	}
+
+	TBitmap(Vector2i s, int comp, const T *d = NULL) : size(s), channels(comp) {
+		size = Vector2i(w, h);
+		if (d != NULL)
+			data = (void*)d;
+		else {
+			data = new T[w * h * channels];
+			clear();
+		}
+	}
+	
 	TBitmap(TBitmap<T> *input = NULL) {
 		if (input == NULL) {
 			w = 0;
@@ -163,6 +174,18 @@ public:
 			*thisdata++ = *inputdata++;
 		}
 	}
+
+	template<typename O> TBitmap<T>(TBitmap<O> *input) {
+		w = input->getSize()(0);
+		h = input->getSize()(1);
+		size = input->getSize();
+		channels = input->getChannelCount();
+		T* inputdata = input->getData();
+		data = static_cast<void *>(new T[w*h*channels]);
+		T* thisdata = static_cast<T*>(data);
+		convert<O, T>(input, this);
+	}
+
 	TBitmap(const TBitmap<T> &input) {
 		w = input.getSize()(0);
 		h = input.getSize()(1);
@@ -175,6 +198,7 @@ public:
 			*thisdata++ = *inputdata++;
 		}
 	}
+
 	Vector2i getSize() { return size; }
 	const Vector2i getSize() const { return size; }
 	int getChannelCount() { return channels; }
@@ -223,6 +247,61 @@ typedef TBitmap<Float> BitmapF;
 typedef TBitmap<int> BitmapI;
 typedef TBitmap<Uchar> BitmapC;
 
+
+// UTILITY Functions for bitmap data inter-conversion
+template<typename I, typename O> bool convert(TBitmap<I> *input, TBitmap<O> *output) {
+	std::cout << "Conversion between bitmaps of these data types not implemented!\n";
+	return false;
+}
+
+
+template<> bool convert(BitmapF *input, BitmapI *output) {
+	output = new BitmapI(input->getSize(), input->getChannelCount(), NULL);
+	int *outputdata = output->getData();
+	Float *inputdata = input->getData();
+	Vector2i size = input->getSize();
+	int channels = input->getChannelCount();
+	for (int i = 0; i < size(0)*size(1)*channels; ++i) {
+		*outputdata++ = static_cast<int>(*inputdata++);
+	}
+	return true;
+}
+
+template<> bool convert(BitmapI *input, BitmapF *output) {
+	output = new BitmapF(input->getSize(), input->getChannelCount(), NULL);
+	Float *outputdata = output->getData();
+	int *inputdata = input->getData();
+	Vector2i size = input->getSize();
+	int channels = input->getChannelCount();
+	for (int i = 0; i < size(0)*size(1)*channels; ++i) {
+		*outputdata++ = static_cast<Float>(*inputdata++);
+	}
+	return true;
+}
+
+template<> bool convert(BitmapF *input, BitmapC *output) {
+	output = new BitmapC(input->getSize(), input->getChannelCount(), NULL);
+	Uchar *outputdata = output->getData();
+	Float *inputdata = input->getData();
+	Vector2i size = input->getSize();
+	int channels = input->getChannelCount();
+	for (int i = 0; i < size(0)*size(1)*channels; ++i) {
+		*outputdata++ = static_cast<Uchar>(*inputdata++ * 255);
+	}
+	return true;
+}
+
+template<> bool convert(BitmapC *input, BitmapF *output) {
+	output = new BitmapF(input->getSize(), input->getChannelCount(), NULL);
+	Float *outputdata = output->getData();
+	Uchar *inputdata = input->getData();
+	Vector2i size = input->getSize();
+	int channels = input->getChannelCount();
+	for (int i = 0; i < size(0)*size(1)*channels; ++i) {
+		*outputdata++ = static_cast<Float>(*inputdata++) / 255.f;
+	}
+	return true;
+}
 
 template<typename T> class TImageBlock {
 public:
@@ -330,8 +409,22 @@ protected:
 	TBitmap<int> *m_sppbitmap;
 };
 
-typedef TImageBlock<float> ImageBlockF;
-typedef TImageBlock<float> ImageBlockC;
+typedef TImageBlock<Float> ImageBlockF;
+typedef TImageBlock<Uchar> ImageBlockC;
+
+// UTILITY Functions for imageblock data inter-conversion
+template<typename I, typename O> bool convert(TImageBlock<I> *input, TImageBlock<O> *output) {
+	TBitmap<O> *outputbitmap;
+	TBitmap<I> *inputbitmap = input->getBitmap();
+	BitmapI *inputsppbitmap = new BitmapI(input->getSppBitmap());
+	if (!convert(inputbitmap, outputbitmap)) {
+		std::cout << "Conversion between imageblocks of these data types failed!\n";
+		return false;
+	}
+	output = new TImageBlock<O>(input->getOffset(), input->getSize(), input->getBorderSize(), input->getWarn(), outputbitmap, inputsppbitmap);
+	return true;
+}
+
 
 template <typename T> void dumpMap(const TBitmap<T> *bitmap, std::string filename, EBitmapType format, std::string bitmapname="") {
 	if (bitmapname == "") {
@@ -345,7 +438,7 @@ template <typename T> void dumpMap(const TBitmap<T> *bitmap, std::string filenam
 
 	switch (format) {
 		case EPNG:
-			stbi_write_png(std::string(filename+".png").c_str(), x, y, comp, data, 16);
+			stbi_write_png(std::string(filename + ".png").c_str(), x, y, comp, data, 16);
 			break;
 
 		case EBMP:
