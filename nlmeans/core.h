@@ -6,6 +6,7 @@
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+#include <fstream>
 #include "Eigen/Dense"
 using namespace Eigen;
 
@@ -145,7 +146,8 @@ public:
 	}
 
 	TBitmap(Vector2i s, int comp, const T *d = NULL) : size(s), channels(comp) {
-		size = Vector2i(w, h);
+		w = size(0);
+		h = size(1);
 		if (d != NULL)
 			data = (void*)d;
 		else {
@@ -212,7 +214,41 @@ public:
 		}
 	}
 
-	bool loadBitmap(std::string filename) {
+	//stores min value of data and max value of data and returns the range of data
+	T getDataRange(T &tmin, T &tmax) const {
+		const T *tdata = getData();
+		T maxValue = static_cast<T>(0), minValue = static_cast<T>(0);
+		for (int i = 0; i < size(0) * size(1) * channels; ++i, ++tdata) {
+			if (maxValue < *tdata)
+				maxValue = *tdata;
+			if (minValue > *tdata)
+				minValue = *tdata;
+		}
+		tmin = minValue;
+		tmax = maxValue;
+		return static_cast<T>(maxValue - minValue);
+	}
+
+	bool loadBitmap(std::string filename, EBitmapType format=EHDR) {
+		switch (format) {
+		case EPNG:
+			filename += ".png";
+			break;
+
+		case EBMP:
+			filename += ".bmp";
+			break;
+
+		case ETGA:
+			filename += ".tga";
+			break;
+
+		case EHDR:
+		default:
+			filename += ".hdr";
+			break;
+		}
+			
 		bool is_hdr = stbi_is_hdr(filename.c_str());
 		int x, y, n;
 		if (is_hdr)
@@ -233,6 +269,18 @@ public:
 		stbi_image_free(data);
 	}
 
+	void logToFile(const std::string filename = "log.txt") const {
+		std::ofstream logFile;
+		logFile.open(filename);
+		T *thisdata = static_cast<T*>(data);
+		for (int j = 0; j < h; ++j) 
+			for (int i = 0; i < w; ++i) {
+				logFile << "x = " << i << " y = " << j << " bitmap value = " << static_cast<Float>(thisdata[0]) << ", " << static_cast<Float>(thisdata[1]) << ", " << static_cast<Float>(thisdata[2]) << "\n";
+			thisdata+=3;
+		}
+		logFile.close();
+	}
+
 	~TBitmap() {
 		unloadBitmap();
 	}
@@ -249,14 +297,16 @@ typedef TBitmap<Uchar> BitmapC;
 
 
 // UTILITY Functions for bitmap data inter-conversion
-template<typename I, typename O> bool convert(TBitmap<I> *input, TBitmap<O> *output) {
+template<typename I, typename O> TBitmap<O>* convert(TBitmap<I> *input) {
+	if (std::is_same<I, O>::value)
+		return new TBitmap<O>(input);
 	std::cout << "Conversion between bitmaps of these data types not implemented!\n";
-	return false;
+	return NULL;
 }
 
 
-template<> bool convert(BitmapF *input, BitmapI *output) {
-	output = new BitmapI(input->getSize(), input->getChannelCount(), NULL);
+template<> BitmapI* convert(BitmapF *input) {
+	BitmapI *output = new BitmapI(input->getSize(), input->getChannelCount(), NULL);
 	int *outputdata = output->getData();
 	Float *inputdata = input->getData();
 	Vector2i size = input->getSize();
@@ -264,11 +314,11 @@ template<> bool convert(BitmapF *input, BitmapI *output) {
 	for (int i = 0; i < size(0)*size(1)*channels; ++i) {
 		*outputdata++ = static_cast<int>(*inputdata++);
 	}
-	return true;
+	return output;
 }
 
-template<> bool convert(BitmapI *input, BitmapF *output) {
-	output = new BitmapF(input->getSize(), input->getChannelCount(), NULL);
+template<> BitmapF* convert(BitmapI *input) {
+	BitmapF *output = new BitmapF(input->getSize(), input->getChannelCount(), NULL);
 	Float *outputdata = output->getData();
 	int *inputdata = input->getData();
 	Vector2i size = input->getSize();
@@ -276,31 +326,33 @@ template<> bool convert(BitmapI *input, BitmapF *output) {
 	for (int i = 0; i < size(0)*size(1)*channels; ++i) {
 		*outputdata++ = static_cast<Float>(*inputdata++);
 	}
-	return true;
+	return output;
 }
 
-template<> bool convert(BitmapF *input, BitmapC *output) {
-	output = new BitmapC(input->getSize(), input->getChannelCount(), NULL);
+template<> BitmapC* convert(BitmapF *input) {
+	BitmapC *output = new BitmapC(input->getSize(), input->getChannelCount(), NULL);
+	Float minValue = 0.f, maxValue = 0.f;
+	Float invScale = 1.f / input->getDataRange(minValue, maxValue);
 	Uchar *outputdata = output->getData();
 	Float *inputdata = input->getData();
 	Vector2i size = input->getSize();
 	int channels = input->getChannelCount();
 	for (int i = 0; i < size(0)*size(1)*channels; ++i) {
-		*outputdata++ = static_cast<Uchar>(*inputdata++ * 255);
+		*outputdata++ = static_cast<Uchar>((*inputdata++ - minValue) * invScale * 255);
 	}
-	return true;
+	return output;
 }
 
-template<> bool convert(BitmapC *input, BitmapF *output) {
-	output = new BitmapF(input->getSize(), input->getChannelCount(), NULL);
+template<> BitmapF* convert(BitmapC *input) {
+	BitmapF *output = new BitmapF(input->getSize(), input->getChannelCount(), NULL);
 	Float *outputdata = output->getData();
 	Uchar *inputdata = input->getData();
 	Vector2i size = input->getSize();
 	int channels = input->getChannelCount();
 	for (int i = 0; i < size(0)*size(1)*channels; ++i) {
-		*outputdata++ = static_cast<Float>(*inputdata++) / 255.f;
+		*outputdata++ = static_cast<Float>(*inputdata++);
 	}
-	return true;
+	return output;
 }
 
 template<typename T> class TImageBlock {
@@ -413,20 +465,20 @@ typedef TImageBlock<Float> ImageBlockF;
 typedef TImageBlock<Uchar> ImageBlockC;
 
 // UTILITY Functions for imageblock data inter-conversion
-template<typename I, typename O> bool convert(TImageBlock<I> *input, TImageBlock<O> *output) {
-	TBitmap<O> *outputbitmap;
+template<typename I, typename O> TImageBlock<O>* convert(TImageBlock<I> *input) {
 	TBitmap<I> *inputbitmap = input->getBitmap();
 	BitmapI *inputsppbitmap = new BitmapI(input->getSppBitmap());
-	if (!convert(inputbitmap, outputbitmap)) {
+	TBitmap<O> *outputbitmap = convert<I,O>(inputbitmap);
+	if (outputbitmap == NULL) {
 		std::cout << "Conversion between imageblocks of these data types failed!\n";
-		return false;
+		return NULL;
 	}
-	output = new TImageBlock<O>(input->getOffset(), input->getSize(), input->getBorderSize(), input->getWarn(), outputbitmap, inputsppbitmap);
-	return true;
+	TImageBlock<O> *output = new TImageBlock<O>(input->getOffset(), input->getSize(), input->getBorderSize(), input->getWarn(), outputbitmap, inputsppbitmap);
+	return output;
 }
 
 
-template <typename T> void dumpMap(const TBitmap<T> *bitmap, std::string filename, EBitmapType format, std::string bitmapname="") {
+template <typename T> int dumpMap(const TBitmap<T> *bitmap, std::string filename, EBitmapType format = EPNG, std::string bitmapname="") {
 	if (bitmapname == "") {
 		bitmapname = filename;
 	}
@@ -435,27 +487,40 @@ template <typename T> void dumpMap(const TBitmap<T> *bitmap, std::string filenam
 	int y = bitmap->getSize()(1);
 	int comp = bitmap->getChannelCount();
 	const T *data = bitmap->getData();
+	int ret;
 
 	switch (format) {
 		case EPNG:
-			stbi_write_png(std::string(filename + ".png").c_str(), x, y, comp, data, 16);
+			ret = stbi_write_png(std::string(filename + ".png").c_str(), x, y, comp, data, 0); // pass 0 to let library calculate row_stride
 			break;
 
 		case EBMP:
-			stbi_write_bmp(std::string(filename + ".bmp").c_str(), x, y, comp, data);
+			ret = stbi_write_bmp(std::string(filename + ".bmp").c_str(), x, y, comp, data);
 			break;
 
 		case ETGA:
-			stbi_write_tga(std::string(filename + ".tga").c_str(), x, y, comp, data);
+			ret = stbi_write_tga(std::string(filename + ".tga").c_str(), x, y, comp, data);
 			break;
 
-		case EHDR:
-			stbi_write_hdr(std::string(filename + ".hdr").c_str(), x, y, comp, data);
-			break;
 		default:
+			ret = -1;
 			//Log(EError, "Invalid format!");
 			break;
 	}
+	return ret;
+}
+
+template<> int dumpMap(const BitmapF* bitmap, std::string filename, EBitmapType format, std::string bitmapname) {
+	if (bitmapname == "") {
+		bitmapname = filename;
+	}
+	//Log(EInfo, "Writing bitmap %s to \"%s\" ..", bitmapname.c_str(), filename.c_str());
+	int x = bitmap->getSize()(0);
+	int y = bitmap->getSize()(1);
+	int comp = bitmap->getChannelCount();
+	const Float *data = bitmap->getData();
+
+	return stbi_write_hdr(std::string(filename + ".hdr").c_str(), x, y, comp, data);
 }
 
 
