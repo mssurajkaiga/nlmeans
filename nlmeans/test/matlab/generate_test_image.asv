@@ -1,0 +1,3 @@
+data = ones(20, 20, 3)/3;
+data = imnoise(data,'gaussian',);
+imwrite(data, 'input_random.jpeg');
