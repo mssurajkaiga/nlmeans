@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _CORE_H_
 #define _CORE_H_
 
@@ -358,7 +359,7 @@ template<> BitmapF* convert(BitmapC *input) {
 template<typename T> class TImageBlock {
 public:
 	TImageBlock(Point2i offset, Vector2i size, int border, bool warn = false, TBitmap<T> *bitmap = NULL,
-		BitmapI *sppbitmap = NULL/*, TBitmap<T> *varbitmap = NULL, TBitmap<T> *varsbitmap = NULL*/) : m_offset(offset),
+		BitmapI *sppbitmap = NULL, TBitmap<T> *varbitmap = NULL, TBitmap<T> *varsbitmap = NULL) : m_offset(offset),
 		m_size(size), m_borderSize(border), m_warn(warn), m_bitmap(bitmap), m_sppbitmap(sppbitmap)//,
 		//m_varbitmap(varbitmap), m_varsbitmap(varsbitmap) 
 	{
@@ -366,6 +367,10 @@ public:
 			m_bitmap = new TBitmap<T>(size(0), size(1), 3);
 		if (sppbitmap == NULL)
 			m_sppbitmap = new BitmapI(size(0), size(1), 1);
+		if (varbitmap == NULL)
+			m_varbitmap = new TBitmap<T>(size(0), size(1), 3);
+		if (varsbitmap == NULL)
+			m_varsbitmap = new TBitmap<T>(size(0), size(1), 3);
 	}
 
 	TImageBlock(TImageBlock<T> *input) {
@@ -375,8 +380,8 @@ public:
 		m_warn = input->getWarn();
 		m_bitmap = new TBitmap<T>(input->getBitmap());
 		m_sppbitmap = new BitmapI(input->getSppBitmap());
-		/*m_varbitmap = new TBitmap<T>(input->getVarBitmap());
-		m_varsbitmap = new TBitmap<T>(input->getVarsBitmap());*/
+		m_varbitmap = new TBitmap<T>(input->getVarBitmap());
+		m_varsbitmap = new TBitmap<T>(input->getVarsBitmap());
 	}
 
 	TImageBlock(const TImageBlock<T> &input) {
@@ -386,8 +391,8 @@ public:
 		m_warn = input.getWarn();
 		m_bitmap = new TBitmap<T>(input.getBitmap());
 		m_sppbitmap = new BitmapI(input.getSppBitmap());
-		/*m_varbitmap = new TBitmap<T>(input->getVarBitmap());
-		m_varsbitmap = new TBitmap<T>(input->getVarsBitmap());*/
+		m_varbitmap = new TBitmap<T>(input->getVarBitmap());
+		m_varsbitmap = new TBitmap<T>(input->getVarsBitmap());
 	}
 
 	/// Set the current block offset
@@ -428,21 +433,20 @@ public:
 	inline TBitmap<int>* getSppBitmap() { return m_sppbitmap; }
 	inline const TBitmap<int>* getSppBitmap() const{ return m_sppbitmap; }
 
-/*
 	/// Return a pointer to the underlying variance bitmap representation
 	inline TBitmap<T>* getVarBitmap() { return m_varbitmap; }
 	inline const TBitmap<T>* getVarBitmap() const { return m_varbitmap; }
 
 	/// Return a pointer to the underlying variance square bitmap representation
 	inline TBitmap<T>* getVarsBitmap() { return m_varsbitmap; }
-	inline const TBitmap<T>* getVarsBitmap() const { return m_varsbitmap; }*/
+	inline const TBitmap<T>* getVarsBitmap() const { return m_varsbitmap; }
 
 	/// Clear everything to zero
 	inline void clear() {
 		m_bitmap->clear();
 		m_sppbitmap->clear();
-		//m_varbitmap->clear();
-		//m_varsbitmap->clear();
+		m_varbitmap->clear();
+		m_varsbitmap->clear();
 	}
 	~TImageBlock() {
 		delete m_bitmap;
@@ -457,7 +461,7 @@ protected:
 	bool m_warn;
 	/* Stores samples-per-pixel, per-pixel variance, squared variance
 	*/
-	TBitmap<T> *m_bitmap;// , *m_varbitmap, *m_varsbitmap;
+	TBitmap<T> *m_bitmap, *m_varbitmap, *m_varsbitmap;
 	TBitmap<int> *m_sppbitmap;
 };
 
@@ -466,10 +470,11 @@ typedef TImageBlock<Uchar> ImageBlockC;
 
 // UTILITY Functions for imageblock data inter-conversion
 template<typename I, typename O> TImageBlock<O>* convert(TImageBlock<I> *input) {
-	TBitmap<I> *inputbitmap = input->getBitmap();
 	BitmapI *inputsppbitmap = new BitmapI(input->getSppBitmap());
-	TBitmap<O> *outputbitmap = convert<I,O>(inputbitmap);
-	if (outputbitmap == NULL) {
+	TBitmap<O> *outputbitmap = convert<I, O>(input->getBitmap());
+	TBitmap<O> *outputvarbitmap = convert<I, O>(output->getVarBitmap());
+	TBitmap<O> *outputvarsbitmap = convert<I, O>(output->getVarsBitmap());
+	if (outputbitmap == NULL || outputvarbitmap == NULL || outputvarsbitmap == NULL) {
 		std::cout << "Conversion between imageblocks of these data types failed!\n";
 		return NULL;
 	}

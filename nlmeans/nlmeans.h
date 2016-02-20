@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _NLMEANS_H_
 #define _NLMEANS_H_
 
@@ -16,8 +17,6 @@
 #include <assert.h>
 #include <iostream>
 #include <ctime>
-
-template<typename I, typename O> class NLMeansDenoiser;
 
 template<typename T> class DenoiserInput {
 	// Generic class to encapsulate denoiser input - useful since different denoisers have
@@ -83,12 +82,12 @@ public:
 	}
 
 	void inline dump() {
-		Log(ECustom, "Modified NL Means Denoiser Parameters");
+		Log(ECustom, "Non-Local Means Denoiser Parameters");
 		Log(ECustom, "Window Radius(r) = %d", m_r);
 		Log(ECustom, "Window size = %d", m_windowsize);
 		Log(ECustom, "Patch Radius(f) = %d", m_f);
 		Log(ECustom, "Patch size = %d", m_patchsize);
-		Log(ECustom, "Damping Factor(k) = %f", m_k);
+		Log(ECustom, "Filter parameter(k) = %f", m_k);
 		Log(ECustom, "Standard deviation (sigma) = %f", m_sigma);
 		//Log(ECustom, "NOTE: DENOISER USES CROSS FILTERING ONLY WITH SAMPLE BITMAP AND USES SCALED MEAN SAMPLE VARIANCE BITMAP");
 	}
@@ -441,7 +440,7 @@ protected:
 	int m_r, m_f;
 	Float m_k, m_sigma, m_sigma2, m_h2;
 	int m_windowsize, m_patchsize; // m_windowsize = 2r + 1, m_patchsize = 2f + 1
-	const ImageBlockF *m_imageblockA, *m_imageblockB;
+	const ImageBlockF *m_imageblockA;
 	Vector2i m_size;
 	bool m_isinitialized, m_dumpmaps;
 };

@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
@@ -10,6 +11,15 @@
 #define M_F 3
 #define M_ALPHA 4
 #define M_K 0.45
+
+void Assert(bool expression, std::string customError= "") {
+	if (!expression) {
+		//Log(EError, "Error: " + customError);
+		assert(false);
+		exit(0);
+	}
+	assert(true);
+}
 
 // Utility functions for generic min and max computations
 template<typename T> inline T min(const T &a, const T &b) {
