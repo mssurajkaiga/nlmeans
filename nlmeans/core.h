@@ -360,8 +360,8 @@ template<typename T> class TImageBlock {
 public:
 	TImageBlock(Point2i offset, Vector2i size, int border, bool warn = false, TBitmap<T> *bitmap = NULL,
 		BitmapI *sppbitmap = NULL, TBitmap<T> *varbitmap = NULL, TBitmap<T> *varsbitmap = NULL) : m_offset(offset),
-		m_size(size), m_borderSize(border), m_warn(warn), m_bitmap(bitmap), m_sppbitmap(sppbitmap)//,
-		//m_varbitmap(varbitmap), m_varsbitmap(varsbitmap) 
+		m_size(size), m_borderSize(border), m_warn(warn), m_bitmap(bitmap), m_sppbitmap(sppbitmap),
+		m_varbitmap(varbitmap), m_varsbitmap(varsbitmap) 
 	{
 		if (bitmap == NULL)
 			m_bitmap = new TBitmap<T>(size(0), size(1), 3);
@@ -472,13 +472,14 @@ typedef TImageBlock<Uchar> ImageBlockC;
 template<typename I, typename O> TImageBlock<O>* convert(TImageBlock<I> *input) {
 	BitmapI *inputsppbitmap = new BitmapI(input->getSppBitmap());
 	TBitmap<O> *outputbitmap = convert<I, O>(input->getBitmap());
-	TBitmap<O> *outputvarbitmap = convert<I, O>(output->getVarBitmap());
-	TBitmap<O> *outputvarsbitmap = convert<I, O>(output->getVarsBitmap());
+	TBitmap<O> *outputvarbitmap = convert<I, O>(input->getVarBitmap());
+	TBitmap<O> *outputvarsbitmap = convert<I, O>(input->getVarsBitmap());
 	if (outputbitmap == NULL || outputvarbitmap == NULL || outputvarsbitmap == NULL) {
 		std::cout << "Conversion between imageblocks of these data types failed!\n";
 		return NULL;
 	}
-	TImageBlock<O> *output = new TImageBlock<O>(input->getOffset(), input->getSize(), input->getBorderSize(), input->getWarn(), outputbitmap, inputsppbitmap);
+	TImageBlock<O> *output = new TImageBlock<O>(input->getOffset(), input->getSize(), input->getBorderSize(),
+		input->getWarn(), outputbitmap, inputsppbitmap, outputvarbitmap, outputvarsbitmap);
 	return output;
 }
 

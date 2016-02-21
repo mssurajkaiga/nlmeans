@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _MODIFIED_NLMEANS_H_
 #define _MODIFIED_NLMEANS_H_
 
@@ -12,11 +13,12 @@ k = damping factor (similar in pratice to original k)
 sigma = strength of variance cancellation and not variance value
 */
 
-template<typename I, typename O> class ModifiedNLMeansDenoiser : public NLMeansDenoiser<I,O> {
+template<typename I, typename O> class ModifiedNLMeansDenoiser: public NLMeansDenoiser<I, O> {
 public:
-	ModifiedNLMeansDenoiser(int r = 7, int f = 3, float k = 0.45, float sigma = 1.0, int vr = 1, bool dumpm = true) : NLMeansDenoiser<I,O>(r, f, k, sigma, vr, dumpm) {
+	ModifiedNLMeansDenoiser(int r = 7, int f = 3, float k = 0.45, float sigma = 1.0, bool dumpm = true)
+		: NLMeansDenoiser<I,O>(r, f, k, sigma, dumpm) {
 
-		m_sigma2 = m_sigma * m_sigma * patch2; // variance (sigma squared)
+		m_sigma2 = m_sigma * m_sigma * m_patch2; // variance (sigma squared)
 		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
 		m_isinitialized = false;
 
@@ -42,99 +44,9 @@ public:
 	}
 
 
-	// NOT IMPLEMENTED - hence disabled for now
+	// NOT IMPLEMENTED - disabled for now
 	DenoiserOutput<O>* pixelBasedDenoise(DenoiserInput<I> *in, bool progressbar = true) {
 		return NULL;
-//		bool check = false;
-//		int inputcount = in->getImageBlocks().size();
-//		assert(inputcount > 0);
-//		ImageBlockF* denoised = convert<I, Float>(in->getImageBlocks()[0]);
-//		denoised->clear();
-//
-//		if (!m_isinitialized)
-//			check = initialize(in);
-//		assert(check);
-//
-//		std::string basefilename = in->getBaseFilename();
-//		BitmapF *output = denoised->getBitmap();
-//		Float *outdata = output->getData();
-//		int outchannelcount = output->getChannelCount();
-//
-//		// progress reporting!
-//		Float progress = 0.f, inc = 100.f / static_cast<Float>(m_size(0)*m_size(1));
-//		int channelcountA = m_imageblockA->getChannelCount();
-//		std::clock_t start = std::clock();
-//		// for each pixel compute weighted average from pixels in window
-//		for (int y = 0; y < m_size(1); ++y) {// iterate through each pixel in imageblock ignoring boundaries
-//#pragma omp parallel for
-//			{
-//				for (int x = 0; x < m_size(0); ++x) {
-//					// pixel being filtered
-//					const Point2i p(x, y);
-//					Float weightSumA = 0.f;
-//					Float *filteredValueA = new Float[channelcountA];
-//					for (auto i = 0; i < channelcountA; ++i)
-//						filteredValueA[i] = 0.f;
-//
-//					//const Point2i tempmin(x - std::max((int)x - m_r, 0), y - (std::max((int)y - m_r, 0)));
-//					//const Point2i tempmax(std::min((int)x + m_r, m_size(0) - 1) - x, std::min((int)y + m_r, m_size(1) - 1) - y);
-//					//int width = std::min(std::min(tempmin(0), tempmin(1)), std::min(tempmax(0), tempmax(1)));
-//					int width = computeSquareWindowWidth(x, y, m_size, m_r);
-//					const Point2i windowmin(x - width, y - width), windowmax(x + width, y + width);
-//
-//					const Float *baseimageblockAdata = m_imageblockA->getBitmap()->getData();
-//					int offsetA = (windowmin(0) + m_size(0) * windowmin(1)) * channelcountA;
-//					int xincrementA = m_size(0) * channelcountA;
-//
-//					// trivial case in case of pixels on edges
-//					if (width == 0) {
-//						for (int k = 0; k < outchannelcount; ++k)
-//							*outdata++ = *(baseimageblockAdata + offsetA++);
-//						continue;
-//					}
-//
-//					Float maxweight = 0.f; // max weight of neighbor pixlels in window to be set for denoisee pixel
-//					// loop through each pixel in window and compute filter weight on equivalent pixel in other imageblock
-//					// and apply it to pixel in this imageblock - cross filtering
-//					for (int j = windowmin(1); j <= windowmax(1); ++j) {
-//						const Float *imageblockAdata = baseimageblockAdata + offsetA;
-//						for (int i = windowmin(0); i <= windowmax(0); ++i) {
-//							const Point2i q(i, j);
-//							Float weightA = 0.f;
-//							if (p(0) != i && p(1) != j) {
-//								weightA = computeNeighborWeightContribution(m_imageblockA->getBitmap(), p, q);
-//								if (weightA > maxweight) {
-//									maxweight = weightA;
-//								}
-//							}
-//							weightSumA += weightA;
-//							for (int k = 0; k < channelcountA; ++k)
-//								filteredValueA[k] += *imageblockAdata++ * weightA;
-//						}
-//						offsetA += xincrementA;
-//					}
-//					// account for weight contribution manually set for denoisee pixel (as the max of other weights)
-//					const Float *imageblockAdata = baseimageblockAdata + (x + m_size(0) * y) * channelcountA;
-//					for (int k = 0; k < channelcountA; ++k)
-//						filteredValueA[k] += *imageblockAdata++ * maxweight;
-//					weightSumA += maxweight;
-//
-//					for (int k = 0; k < outchannelcount; ++k)
-//						*outdata++ = filteredValueA[k] / weightSumA;
-//					if (progressbar) {
-//						progress += inc;
-//						std::cout << progress << " % denoised \r";
-//					}
-//				}
-//			}
-//		}
-//
-//		TImageBlock<O> *finaldenoised = convert<Float, O>(denoised);
-//		if (finaldenoised == NULL)
-//			return NULL;
-//		DenoiserOutput<O> *finaloutput = new DenoiserOutput<O>(finaldenoised);
-//		finaloutput->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
-//		return finaloutput;
 	}
 
 	template<typename I, typename O> DenoiserOutput<O>* patchBasedDenoise(DenoiserInput<I> *in, bool progressbar = true) {
@@ -161,8 +73,8 @@ public:
 		Float *outdata = output->getData();
 		int *sppdata = valuesPerPixel->getData();
 		int outchannelcount = output->getChannelCount();
-		const Float *bitmapData = m_imageblockA->getBitmap()->getData();
-		const Float *bitmapDataB = m_imageblockB->getBitmap()->getData();
+		const Float *bitmapAData = m_imageblockA->getBitmap()->getData();
+		const Float *bitmapBData = m_imageblockB->getBitmap()->getData();
 
 		// progress reporting!
 		Float progress = 0.f, inc = 100.f / static_cast<Float>(m_size(0)*m_size(1));
@@ -173,16 +85,19 @@ public:
 		for (int y = 0; y < m_size(1); ++y) {// iterate through each pixel in imageblock ignoring boundaries
 			//#pragma omp parallel for
 			{
-				// patch to be denoised
-				Patch<Float> *denoisedPatch = new Patch<Float>(m_patchsize, m_patchsize, channelcountA);
-				Float *denoisedData = denoisedPatch->getData();
+				// patches to be denoised
+				Patch<Float> *denoisedPatchA = new Patch<Float>(m_patchsize, m_patchsize, channelcountA);
+				Float *denoisedDataA = denoisedPatchA->getData();
+				Patch<Float> *denoisedPatchB = new Patch<Float>(m_patchsize, m_patchsize, channelcountA);
+				Float *denoisedDataB = denoisedPatchB->getData();
 
 				for (int x = 0; x < m_size(0); ++x) {
 					// pixel being filtered
 					const Point2i p(x, y);
 					Float weightSumA = 0.f, maxWeightA = 0.f, weightSumB = 0.f, maxWeightB = 0.f;
 					// clear denoised patch
-					denoisedPatch->clear(0.f);
+					denoisedPatchA->clear(0.f);
+					denoisedPatchB->clear(0.f);
 
 					// reduce the size of the comparison window if we are near the boundary
 					int m_f0 = min(m_f, min(m_size(0) - 1 - x, min(m_size(1) - 1 - y, min(x, y))));
@@ -206,7 +121,8 @@ public:
 								//fDif = fDif / fH2;
 
 								//float fWeight = wxSLUT(fDif, fpLut);
-								Float weightA = computeNeighborWeightContribution(m_imageblockB->getBitmap(), p, q, m_f0);
+								Float weightA = computeNeighborWeightContribution(m_imageblockB->getBitmap(), m_filteredbuffervariance, p, q, m_f0);
+								Float weightB = computeNeighborWeightContribution(m_imageblockA->getBitmap(), m_filteredbuffervariance, p, q, m_f0);
 								/*if (x > 10 && y > 10 && x < 12 && y < 14) {
 									logFile << " i = " << i << " j = " << j << " weightA = " << weightA << "\n";
 								}*/
@@ -214,6 +130,9 @@ public:
 								if (weightA > maxWeightA)
 									maxWeightA = weightA;
 								weightSumA += weightA;
+								if (weightB > maxWeightB)
+									maxWeightB = weightB;
+								weightSumB += weightB;
 
 								for (int is = -m_f0; is <= m_f0; ++is) {
 									int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
@@ -222,7 +141,8 @@ public:
 									for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
 										int iindex = aiindex + ir;
 										int il = ail + ir;
-										denoisedData[iindex] += weightA * bitmapData[il];
+										denoisedDataA[iindex] += weightA * bitmapAData[il];
+										denoisedDataB[iindex] += weightB * bitmapBData[il];
 									}
 								}
 							}
@@ -236,13 +156,19 @@ public:
 						for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
 							int iindex = aiindex + ir;
 							int il = ail + ir;
-							denoisedData[iindex] += maxWeightA * bitmapData[il];
+							denoisedDataA[iindex] += maxWeightA * bitmapAData[il];
+							denoisedDataB[iindex] += maxWeightB * bitmapBData[il];
 						}
 					}
 					weightSumA += maxWeightA;
+					weightSumB += maxWeightB;
 
+					Float invWeightSumA = 0.f, invWeightSumB = 0.f;
 					// normalize average value when fTotalweight is not near zero
-					if (weightSumA > FLOAT_EPSILON) {
+					if (weightSumA > FLOAT_EPSILON)
+						invWeightSumA = 1.f / weightSumA;
+					if(weightSumB > FLOAT_EPSILON)
+						invWeightSumB = 1.f / weightSumB;
 
 						for (int is = -m_f0; is <= m_f0; ++is) {
 							int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
@@ -255,18 +181,19 @@ public:
 								int il = il0 * channelcountA;
 
 								sppdata[il0] = sppdata[il0] + 1;
-								for (int k = 0; k < channelcountA; ++k)
-									outdata[il++] = denoisedData[iindex++] / weightSumA;
+								for (int k = 0; k < channelcountA; ++k, ++iindex)
+									outdata[il++] = denoisedDataA[iindex] * invWeightSumA 
+												  + denoisedDataB[iindex] * invWeightSumB;
 							}
 						}
-					}
 
 					if (progressbar) {
 						progress += inc;
 						std::cout << progress << " % denoised \r";
 					}
 				}
-				delete denoisedPatch;
+				delete denoisedPatchA;
+				delete denoisedPatchB;
 			}
 		}
 
@@ -284,7 +211,6 @@ public:
 		DenoiserOutput<O> *finaloutput = new DenoiserOutput<O>(finaldenoised);
 		finaloutput->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
 		return finaloutput;
-
 	}
 
 
@@ -334,6 +260,119 @@ protected:
 
 	bool isInitialized() const { return m_isinitialized; }
 
+	template<typename I> bool updateSampleVariance(const TImageBlock<I> *imageblock, TBitmap<I> *samplevariance) {
+		const TBitmap<I> *bitmap = imageblock->getBitmap(),
+			*varbitmap = imageblock->getVarBitmap(),
+			*varsbitmap = imageblock->getVarsBitmap();
+		const BitmapI *sppbitmap = imageblock->getSppBitmap();
+
+		if (bitmap == NULL || sppbitmap == NULL || varbitmap == NULL || varsbitmap == NULL)
+			return false;
+		const int &channels = bitmap->getChannelCount();
+		const Vector2i &size = bitmap->getSize();
+		if (samplevariance->getSize() != size)
+			return false;
+
+		const I *dest = bitmap->getData(),
+			*destvar = varbitmap->getData(),
+			*destvars = varsbitmap->getData();
+		const int *destspp = sppbitmap->getData();
+		I *destsv = samplevariance->getData();
+
+		for (int i = 0; i < size(0) * size(1); ++i) {
+			if (*destspp > 1) {
+				for (int k = 0; k < channels; ++k) {
+					I bitmapvalue = *dest++;
+					I mean = *destvar / static_cast<I>(*destspp);
+					*destsv++ = std::abs((*destvars++ - *destvar++ * mean) / static_cast<I>(*destspp - 1));
+				}
+			}
+			else {
+				for (int k = 0; k < channels; ++k) {
+					*destsv++ = 0.f; // no sufficient samples in this pixel to estimate variance
+				}
+			}
+			++destspp;
+		}
+
+		return true;
+	}
+
+	template<typename I> bool getWeightedMean(const TBitmap<I> *input1, const TBitmap<I> *input2,
+		const BitmapI *weight1, const BitmapI *weight2, TBitmap<I> *output) {
+
+		const int &channels = input1->getChannelCount();
+		const Vector2i &size = input1->getSize();
+		if (input2->getSize() != size || weight1->getSize() != size || weight2->getSize() != size || output->getSize() != size)
+			return false;
+		if (input2->getChannelCount() != channels || output->getChannelCount() != channels)
+			return false;
+
+		const I *dest1 = input1->getData(),
+			*dest2 = input2->getData();
+		I *destO = output->getData();
+
+		//Assert(weight1->getChannelCount() == 1, "channel count of weight bitmap 1 is not 1!");
+		//Assert(weight2->getChannelCount() == 1, "channel count of weight bitmap 2 is not 1!");
+
+		const int *destW1 = weight1->getData(),
+			*destW2 = weight2->getData();
+
+		for (int i = 0; i < size(0) * size(1); ++i) {
+			for (int k = 0; k < channels; ++k) {
+				*destO++ = (*dest1++ * *destW1 + *dest2++ * *destW2) / static_cast<I>(*destW1++ + *destW2++);
+			}
+			//++destW1;
+			//++destW2;
+		}
+
+		return true;
+	}
+
+	template<typename I> bool clampAndScale(TBitmap<I> *samplevariance, TBitmap<I> *buffervariance, I clampmin = 0.f, I clampmax = 10.f) {
+		I *destsv = samplevariance->getData();
+		const I *destbv = buffervariance->getData();
+		I avgvarianceratio[3];
+		for (int i = 0; i < 3; ++i)
+			avgvarianceration[i] = 0.f;
+
+		const int &channels = buffervariance->getChannelCount();
+		const Vector2i &size = samplevariance->getSize();
+		int pixelscounted = 0;
+
+		for (int i = 0; i < size.x * size.y; ++i) {
+			for (int k = 0; k < channels; ++k) {
+				if (*destsv > FLT_EPSILON) {
+					avgvarianceratio[k] += clamp((*destbv / *destsv), clampmin, clampmax);
+					++pixelscounted;
+				}
+				++destsv;
+				++destbv;
+			}
+		}
+		avgvarianceratio /= static_cast<I>(pixelscounted);
+
+		destsv = samplevariance->getData();
+		//scale the sample variance bitmap with the average variance ratio
+		for (int i = 0; i < size.x * size.y; ++i) {
+			for (int k = 0; k < channels; ++k) {
+				*destsv++ *= avgvarianceratio[k];
+			}
+		}
+
+		/*Log(ECustom, "Average Variance Ratio = %f %f %f", avgvarianceratio[0], avgvarianceratio[1],
+			avgvarianceratio[2]);*/
+		return true;
+	}
+
+	template<typename I> bool updateBufferVariance(TBitmap<I> *inputA, TBitmap<I> *inputB, TBitmap<I> *output) {
+		return computeBitmapDifference<2,I>(inputA, inputB, output, 0.5);
+	}
+
+	bool updateSampleVarianceVariance() {
+		return computeBitmapDifference<1,Float>(m_samplevarianceA, m_samplevarianceB, m_samplevariancevariance, 1.f, true);
+	}
+
 	// for pixel based weight computation - DISABLED FOR NOW
 	template<typename I> Float computeNeighborWeightContribution(const TBitmap<I> *bitmap,
 		const TBitmap<I> *varbitmap, const Point2i &p, const Point2i &q) const {
@@ -355,17 +394,19 @@ protected:
 	// for patch based weight computation
 	template<typename I> Float computeNeighborWeightContribution(const TBitmap<I> *bitmap, const TBitmap<I> *varbitmap,
 		const Point2i &p, const Point2i &q, int width, bool print = false) const {
-		Float patchDistance = computePatchDistance(bitmap, p, q, width);
+		Float patchDistance = computePatchDistance(bitmap, varbitmap, p, q, width);
 		if (print) {
 			std::cout << "patchDistance = " << patchDistance << "\n";
 		}
-		return exp(-std::max(0.f, patchDistance - 2.f * m_sigma2) / m_h2);
+		return exp(-std::max(0.f, patchDistance));
+		//return exp(-std::max(0.f, patchDistance - 2.f * m_sigma2) / m_h2);
 		//return exp(-patchDistance/m_h2);
 	}
 
-	template<typename I> inline Float computePatchDistance(const TBitmap<I> *bitmap const TBitmap<I> *varbitmap,
+	template<typename I> inline Float computePatchDistance(const TBitmap<I> *bitmap, const TBitmap<I> *varbitmap,
 		const Point2i &p, const Point2i &q, int width = -1) const {
 		const Float *baseimageblockAdata = bitmap->getData();
+		const Float *varbaseimageblockAdata = varbitmap->getData();
 		Vector2i size = bitmap->getSize();
 		int stride = bitmap->getChannelCount();
 		Float patchDistance = 0.f;
@@ -377,7 +418,9 @@ protected:
 			int offsetQ = (q(0) + size(0) * q(1)) * stride;
 			const Float *pvalue = baseimageblockAdata + offsetP;
 			const Float *qvalue = baseimageblockAdata + offsetQ;
-			return perPixelsquaredDistance(*pvalue, *qvalue);
+			const Float *varpvalue = varbaseimageblockAdata + offsetP;
+			const Float *varqvalue = varbaseimageblockAdata + offsetQ;
+			return perPixelsquaredDistance(*pvalue, *qvalue, *varpvalue++, *varqvalue++);
 		}
 
 		const Point2i patchminP(p(0) - width, p(1) - width), patchmaxP(p(0) + width, p(1) + width);
@@ -390,9 +433,11 @@ protected:
 		for (int j = patchminP(1); j <= patchmaxP(1); ++j) {
 			const Float *pvalue = baseimageblockAdata + offsetP;
 			const Float *qvalue = baseimageblockAdata + offsetQ;
+			const Float *varpvalue = varbaseimageblockAdata + offsetP;
+			const Float *varqvalue = varbaseimageblockAdata + offsetQ;
 			for (int i = patchminP(0); i <= patchmaxP(0); ++i) {
 				for (int k = 0; k < stride; ++k)
-					patchDistance += perPixelsquaredDistance(*pvalue++, *qvalue++);
+					patchDistance += perPixelsquaredDistance(*pvalue++, *qvalue++, *varpvalue++, *varqvalue++);
 			}
 			offsetP += xincrement;
 			offsetQ += xincrement;
@@ -401,13 +446,21 @@ protected:
 		return patchDistance;
 	}
 
-	/* Computes original nl means per-pixel squared distance assuming uniform variance */
-	template<typename T> inline T perPixelsquaredDistance(const T &p, const T &q) const {
-		return (p - q) * (p - q);
+	/* Computes modified nl means per-pixel squared distance */
+	template<typename T> inline T perPixelsquaredDistance(const T &p, const T &q,
+		const T &varp, const T &varq) const {
+		//return (p - q) * (p - q);
+		return ((p - q) * (p - q) - m_sigma * (varp + min(varp, varq))) /
+			(T(FLT_EPSILON) + m_k * m_k * (varp + varq));
 	}
 
 protected:
 	const ImageBlockF *m_imageblockA, *m_imageblockB;
+	BitmapF *m_samplevarianceA, *m_samplevarianceB,
+		*m_buffervariance, // estimate of pixel variance using squared difference of buffers
+		*m_meansamplevariance, // spp weighted average of sample variances of buffers A and B
+		*m_samplevariancevariance, // variance of sample variance - needed for smoothing buffer variance with cross filtering
+		*m_filteredbuffervariance;
 };
 
 #endif

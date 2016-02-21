@@ -73,8 +73,8 @@ public:
 
 		m_windowsize = 2 * m_r + 1;
 		m_patchsize = 2 * m_f + 1;
-		Float patch2 = static_cast<Float>(m_patchsize * m_patchsize);
-		m_sigma2 = m_sigma * m_sigma * patch2; // variance (sigma squared)
+		m_patch2 = static_cast<Float>(m_patchsize * m_patchsize);
+		m_sigma2 = m_sigma * m_sigma * m_patch2; // variance (sigma squared)
 		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
 		m_isinitialized = false;
 
@@ -438,7 +438,7 @@ protected:
 
 protected:
 	int m_r, m_f;
-	Float m_k, m_sigma, m_sigma2, m_h2;
+	Float m_k, m_sigma, m_sigma2, m_h2, m_patch2;
 	int m_windowsize, m_patchsize; // m_windowsize = 2r + 1, m_patchsize = 2f + 1
 	const ImageBlockF *m_imageblockA;
 	Vector2i m_size;

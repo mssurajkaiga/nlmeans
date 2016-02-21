@@ -12,13 +12,42 @@
 #define M_ALPHA 4
 #define M_K 0.45
 
+
+void Log(ELogLevel level, const char *filename, const char *fmt, ...) {
+	FILE * pFile;
+	pFile = fopen(filename, "w");
+
+	va_list args;
+	va_start(args, fmt);
+	vprintf_s(fmt, args);
+	vfprintf(pFile, fmt, args);
+	va_end(args);
+	fclose(pFile);
+}
+
+void Log(ELogLevel level, const char *filename, const char *fmt, va_list args) {
+	FILE * pFile;
+	pFile = fopen(filename, "w");
+	vprintf_s(fmt, args);
+	vfprintf(pFile, fmt, args);
+	fclose(pFile);
+}
+
+void Log(ELogLevel level, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	Log(level, "log.txt", fmt, args);
+	va_end(args);
+}
+
 void Assert(bool expression, std::string customError= "") {
 	if (!expression) {
-		//Log(EError, "Error: " + customError);
-		assert(false);
+		Log(EError, std::string("Error: " + customError).c_str());
+		//assert(false);
+		std::cin.get();
 		exit(0);
 	}
-	assert(true);
+	//assert(true);
 }
 
 // Utility functions for generic min and max computations
@@ -173,24 +202,5 @@ template<typename T, typename I> bool normalizeBitmap(const TBitmap<T> *input, c
 
 	return true;
 }
-
-void Log(ELogLevel level, const char *filename, const char *fmt, ...) {
-	FILE * pFile;
-	pFile = fopen(filename, "w");
-
-	va_list args;
-	va_start(args, fmt);
-	vfprintf(pFile, fmt, args);
-	va_end(args);
-	fclose(pFile);
-}
-
-void Log(ELogLevel level, const char *fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	Log(level, "log.txt", fmt, args);
-	va_end(args);
-}
-
 
 #endif
