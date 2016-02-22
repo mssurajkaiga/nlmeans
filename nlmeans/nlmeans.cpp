@@ -10,11 +10,13 @@
 template<typename I, typename O> int denoiseModifiedNLMeans(std::string inputfile, std::string outputfile, EBitmapType type, int r = 3, int f = 1, Float k = 0.7, Float sigma = 0.1, bool dump = true) {
 	ModifiedNLMeansDenoiser<I, O> *denoiser = new ModifiedNLMeansDenoiser<I, O>(r, f, k, sigma, dump);
 	TBitmap<I> *inputA = new TBitmap<I>;
-	BitmapI *inputsppA = new BitmapI;
+	//BitmapI *inputsppA = new BitmapI;
+	TBitmap<I> *inputsppA = new TBitmap<I>;
 	TBitmap<I> *inputvarA = new TBitmap<I>;
 	TBitmap<I> *inputvarsA = new TBitmap<I>;
 	TBitmap<I> *inputB = new TBitmap<I>;
-	BitmapI *inputsppB = new BitmapI;
+	//BitmapI *inputsppB = new BitmapI;
+	TBitmap<I> *inputsppB = new TBitmap<I>;
 	TBitmap<I> *inputvarB = new TBitmap<I>;
 	TBitmap<I> *inputvarsB = new TBitmap<I>;
 	Assert(inputA->loadBitmap(inputfile + "_A", type), "Input bitmap A failed to load!");
@@ -33,6 +35,7 @@ template<typename I, typename O> int denoiseModifiedNLMeans(std::string inputfil
 	std::cout << "Denoising started\n";
 	DenoiserOutput<O> *dOutput = denoiser->denoise(dInput);
 	std::cout << "Denoising finished in " << dOutput->getDenoiseDuration() << " seconds \n";
+	LOG(ECustom, "Denoising took %d seconds", dOutput->getDenoiseDuration());
 	dumpMap(dOutput->getDenoisedImage()->getBitmap(), outputfile, type);
 	inputA->unloadBitmap();
 	inputsppA->unloadBitmap();
@@ -61,6 +64,7 @@ template<typename I, typename O> int denoiseNLMeans(std::string inputfile, std::
 	std::cout << "Denoising started\n";
 	DenoiserOutput<O> *dOutput = denoiser->denoise(dInput);
 	std::cout << "Denoising finished in " << dOutput->getDenoiseDuration() << " seconds \n";
+	LOG(ECustom, "Denoising took %d seconds", dOutput->getDenoiseDuration());
 	dumpMap(dOutput->getDenoisedImage()->getBitmap(), outputfile, type);
 	input->unloadBitmap();
 	std::cin.get();
@@ -71,15 +75,36 @@ template<typename I, typename O> int denoiseNLMeans(std::string inputfile, std::
 
 int _tmain(int argc, char* argv[])
 {
-	int r = 4, f = 2;
+	int r = 10, f = 3;
 	Float k = 0.45f, sigma = 40.f;
-	bool dump = true;
-	//std::string inputfile="test\\input_1_sigma_40.png" , outputfile="test\\output_1_0@4_5_10_denoised_3_4";
-	//std::string inputfile = "test\\cbox_pssmlt_denoise_1st_stage_A", outputfile = "test\\cbox_pssmlt_denoise_1st_stage_A_denoised_4";
-	//std::string inputfile = "test\\noisy_alley_small.png", outputfile = "test\\denoised_alley_small2";
-	//std::string inputfile = "test\\matlab\\input_gaussian_ones_0_0-3.hdr", outputfile = "test\\matlab\\output_gaussian_ones_0_0-3";
+	bool dump = true, ltf = true, ltc = false;
+	std::string inputfile, outputfile;
+	// parse arguments
+	for (int count = 1; count < argc; ++count) {
+		std::string arg(argv[count]);
+		if ( arg == "-i" || arg == "--input") {
+			inputfile = std::string(argv[++count]);
+		}
+		if (arg == "-o" || arg == "--output") {
+			outputfile = std::string(argv[++count]);
+		}
+		if (arg == "-nl" || arg == "--nolog") {
+			ltf = true;
+		}
+		if (arg == "-v" || arg == "--verbose") {
+			ltc = true;
+		}
+	}
 
-	//return denoiseNLMeans<Float, Float>(inputfile, outputfile, EHDR, r, f, k, sigma, dump);
-	std::string inputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage", outputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage_denoised";
+	inputfile = "test\\input_1_sigma_40"; outputfile = "test\\output_1_0@4_5_10_denoised_3_5";
+	//inputfile = "test\\cbox_pssmlt_denoise_1st_stage_A"; outputfile = "test\\cbox_pssmlt_denoise_1st_stage_A_denoised_5";
+	//inputfile = "test\\noisy_alley_small.png"; outputfile = "test\\denoised_alley_small2";
+	//inputfile = "test\\matlab\\input_gaussian_ones_0_0-3.hdr"; outputfile = "test\\matlab\\output_gaussian_ones_0_0-3";
+
+	Logger::Logger(ltf, ltc, inputfile + ".log");
+
+	return denoiseNLMeans<Uchar, Uchar>(inputfile, outputfile, EPNG, r, f, k, sigma, dump);
+	//inputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage"; outputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage_denoised4";
+
 	return denoiseModifiedNLMeans<Float, Float>(inputfile, outputfile, EHDR, r, f, k, sigma, dump);
 }

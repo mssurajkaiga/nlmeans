@@ -82,14 +82,13 @@ public:
 	}
 
 	void inline dump() {
-		Log(ECustom, "Non-Local Means Denoiser Parameters");
-		Log(ECustom, "Window Radius(r) = %d", m_r);
-		Log(ECustom, "Window size = %d", m_windowsize);
-		Log(ECustom, "Patch Radius(f) = %d", m_f);
-		Log(ECustom, "Patch size = %d", m_patchsize);
-		Log(ECustom, "Filter parameter(k) = %f", m_k);
-		Log(ECustom, "Standard deviation (sigma) = %f", m_sigma);
-		//Log(ECustom, "NOTE: DENOISER USES CROSS FILTERING ONLY WITH SAMPLE BITMAP AND USES SCALED MEAN SAMPLE VARIANCE BITMAP");
+		LOG(ECustom, "Denoiser: Non-Local Means Denoiser");
+		LOG(ECustom, "Window Radius(r) = %d", m_r);
+		LOG(ECustom, "Window size = %d", m_windowsize);
+		LOG(ECustom, "Patch Radius(f) = %d", m_f);
+		LOG(ECustom, "Patch size = %d", m_patchsize);
+		LOG(ECustom, "Filter parameter(k) = %f", m_k);
+		LOG(ECustom, "Standard deviation (sigma) = %f", m_sigma);
 	}
 
 	DenoiserOutput<O>* denoise(DenoiserInput<I> *in, bool patchbased = true, bool progressbar = true) {
@@ -197,7 +196,6 @@ public:
 		bool check = false;
 		int inputcount = in->getImageBlocks().size();
 		assert(inputcount > 0);
-		in->getImageBlocks()[0]->getBitmap()->logToFile("original_input.txt");
 		ImageBlockF *denoised = convert<I, Float>(in->getImageBlocks()[0]);
 		denoised->clear();
 
@@ -205,17 +203,13 @@ public:
 			check = initialize(in);
 		assert(check);
 		const BitmapF *converted = m_imageblockA->getBitmap();
-		converted->logToFile("converted_input.txt");
-
-		std::ofstream logFile;
-		logFile.open("log.txt");
 
 		std::string basefilename = in->getBaseFilename();
 		BitmapF *output = denoised->getBitmap();
 		// use spp bitmap to store denoised values per pixel
-		BitmapI *valuesPerPixel = denoised->getSppBitmap();
+		BitmapF *valuesPerPixel = denoised->getSppBitmap();
 		Float *outdata = output->getData();
-		int *sppdata = valuesPerPixel->getData();
+		Float *sppdata = valuesPerPixel->getData();
 		int outchannelcount = output->getChannelCount();
 		const Float *bitmapData = m_imageblockA->getBitmap()->getData();
 
@@ -255,17 +249,7 @@ public:
 							if (i != x && j != y) {
 								const Point2i q(i, j);
 
-								//float fDif = fiL2FloatDist(fpI, fpI, x, y, i, j, m_f0, iChannels, m_size(0), m_size(0));
-
-								//// dif^2 - 2 * fSigma^2 * N      dif is not normalized
-								//fDif = MAX(fDif - 2.0f * (float)icwl *  fSigma2, 0.0f);
-								//fDif = fDif / fH2;
-
-								//float fWeight = wxSLUT(fDif, fpLut);
 								Float weightA = computeNeighborWeightContribution(m_imageblockA->getBitmap(), p, q, m_f0);
-								if (x > 10 && y > 10 && x < 12 && y < 14) {
-									logFile << " i = " << i << " j = " << j << " weightA = " << weightA << "\n";
-								}
 
 								if (weightA > maxWeightA)
 									maxWeightA = weightA;
@@ -312,7 +296,7 @@ public:
 
 								sppdata[il0] = sppdata[il0] + 1;
 								for (int k = 0; k < channelcountA; ++k)
-									outdata[il++] = denoisedData[iindex++] / weightSumA;
+									outdata[il++] += denoisedData[iindex++] / weightSumA;
 							}
 						}
 					}
@@ -328,19 +312,16 @@ public:
 
 		
 		// normalize output according to no. of denoised values used per pixel
-		/*if (!normalizeBitmap<Float, int>(output, valuesPerPixel, output)) {
+		if (!normalizeBitmap(output, valuesPerPixel, output)) {
 			std::cout << "\nError : Normalization of denoised bitmap failed!\n";
-		}*/
+		}
 
-		logFile.close();
 		TImageBlock<O> *finaldenoised = convert<Float,O>(denoised);
 		if (finaldenoised == NULL)
 			return NULL;
-		finaldenoised->getBitmap()->logToFile("denoised_output.txt");
 		DenoiserOutput<O> *finaloutput = new DenoiserOutput<O>(finaldenoised);
 		finaloutput->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
 		return finaloutput;
-
 	}
 
 

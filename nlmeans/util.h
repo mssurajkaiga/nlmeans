@@ -2,7 +2,7 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
-#include "core.h"
+#include "datastructures.h"
 #include <iostream>
 #include <varargs.h>
 
@@ -12,37 +12,63 @@
 #define M_ALPHA 4
 #define M_K 0.45
 
+#define LOG(X, ...) Logger::getInstance()->log(X, ##__VA_ARGS__) 
 
-void Log(ELogLevel level, const char *filename, const char *fmt, ...) {
-	FILE * pFile;
-	pFile = fopen(filename, "w");
 
-	va_list args;
-	va_start(args, fmt);
-	vprintf_s(fmt, args);
-	vfprintf(pFile, fmt, args);
-	va_end(args);
-	fclose(pFile);
-}
+class Logger;
+static Logger *logger = NULL;
 
-void Log(ELogLevel level, const char *filename, const char *fmt, va_list args) {
-	FILE * pFile;
-	pFile = fopen(filename, "w");
-	vprintf_s(fmt, args);
-	vfprintf(pFile, fmt, args);
-	fclose(pFile);
-}
+class Logger {
+public:
+	Logger(bool ltf = true, bool ltc = true, std::string filename = "") : logToFile(ltf), logToConsole(ltc), m_filename(filename) {
+		if (ltf && filename == "")
+			m_filename = "renderlog.txt";
+		logger = this;
+	}
 
-void Log(ELogLevel level, const char *fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	Log(level, "log.txt", fmt, args);
-	va_end(args);
-}
+	static Logger* getInstance() {
+		if (logger == NULL)
+			logger = new Logger();
+		return logger;
+	}
+
+	void log(ELogLevel level, const char *fmt, ...) {
+		va_list args;
+		va_start(args, fmt);
+		if (logToFile)
+			LogToFile(level, m_filename, fmt, args);
+		if (logToConsole)
+			LogToConsole(level, fmt, args);
+		va_end(args);
+	}
+
+protected:
+	void LogToConsole(ELogLevel level, const char *fmt, va_list args) {
+#if IS_WINDOWS
+		vprintf_s(fmt, args);
+#else
+		vprintf(fmt, args);
+#endif
+		printf("\n");
+	}
+
+	void LogToFile(ELogLevel level, std::string filename, const char *fmt, va_list args) {
+		FILE * pFile;
+		pFile = fopen(filename.c_str(), "a+");
+		vfprintf(pFile, fmt, args);
+		fprintf(pFile, "\n");
+		fclose(pFile);
+	}
+
+protected:
+	std::string m_filename;
+	bool logToFile, logToConsole;
+};
+
 
 void Assert(bool expression, std::string customError= "") {
 	if (!expression) {
-		Log(EError, std::string("Error: " + customError).c_str());
+		LOG(EError, std::string("Error: " + customError).c_str());
 		//assert(false);
 		std::cin.get();
 		exit(0);
@@ -201,6 +227,110 @@ template<typename T, typename I> bool normalizeBitmap(const TBitmap<T> *input, c
 		return false;
 
 	return true;
+}
+
+
+// UTILITY functions for bitmap data inter-conversion
+// allocate memory and convert data from one type to another
+template<typename I, typename O> O* convert(const I *input, int size) {
+	O *output = new O[size];
+	for (int i = 0; i < size; ++i)
+		output[i] = static_cast<O>(input[i]);
+	return output;
+}
+
+// convert data from one type to another assuming memory is already allocated
+template<typename I, typename O> void convert(const I *input, int size, O *output) {
+	for (int i = 0; i < size; ++i)
+		output[i] = static_cast<O>(input[i]);
+}
+
+// UTILITY functions for bitmap inter-conversion
+template<typename I, typename O> TBitmap<O>* convert(TBitmap<I> *input) {
+	if (std::is_same<I, O>::value)
+		return new TBitmap<O>(input);
+	Vector2i size = input->getSize();
+	int channels = input->getChannelCount();
+	TBitmap<O> *output = new TBitmap<O>(size, channels, NULL);
+	convert(input->getData(), size(0)*size(1)*channels, output->getData());
+	return output;
+}
+
+// special case for handling float to unsigned char conversion
+template<> BitmapC* convert(BitmapF *input) {
+	BitmapC *output = new BitmapC(input->getSize(), input->getChannelCount(), NULL);
+	Float minValue = 0.f, maxValue = 0.f;
+	Float invScale = 1.f / input->getDataRange(minValue, maxValue);
+	Uchar *outputdata = output->getData();
+	Float *inputdata = input->getData();
+	Vector2i size = input->getSize();
+	int channels = input->getChannelCount();
+	for (int i = 0; i < size(0)*size(1)*channels; ++i) {
+		*outputdata++ = static_cast<Uchar>((*inputdata++ - minValue) * invScale * 255);
+	}
+	return output;
+}
+
+// UTILITY Functions for imageblock data inter-conversion
+template<typename I, typename O> TImageBlock<O>* convert(TImageBlock<I> *input) {
+	//BitmapI *outputsppbitmap = new BitmapI(input->getSppBitmap());
+	TBitmap<O> *outputsppbitmap = convert<I, O>(input->getSppBitmap());
+	TBitmap<O> *outputbitmap = convert<I, O>(input->getBitmap());
+	TBitmap<O> *outputvarbitmap = convert<I, O>(input->getVarBitmap());
+	TBitmap<O> *outputvarsbitmap = convert<I, O>(input->getVarsBitmap());
+	if (outputbitmap == NULL || outputvarbitmap == NULL || outputvarsbitmap == NULL) {
+		std::cout << "Conversion between imageblocks of these data types failed!\n";
+		return NULL;
+	}
+	TImageBlock<O> *output = new TImageBlock<O>(input->getOffset(), input->getSize(), input->getBorderSize(),
+		input->getWarn(), outputbitmap, outputsppbitmap, outputvarbitmap, outputvarsbitmap);
+	return output;
+}
+
+
+template <typename T> int dumpMap(const TBitmap<T> *bitmap, std::string filename, EBitmapType format = EPNG, std::string bitmapname = "") {
+	if (bitmapname == "") {
+		bitmapname = filename;
+	}
+	LOG(EInfo, "Writing bitmap %s to \"%s\" ..", bitmapname.c_str(), filename.c_str());
+	int x = bitmap->getSize()(0);
+	int y = bitmap->getSize()(1);
+	int comp = bitmap->getChannelCount();
+	const T *data = bitmap->getData();
+	int ret;
+
+	switch (format) {
+	case EPNG:
+		ret = stbi_write_png(std::string(filename + ".png").c_str(), x, y, comp, data, 0); // pass 0 to let library calculate row_stride
+		break;
+
+	case EBMP:
+		ret = stbi_write_bmp(std::string(filename + ".bmp").c_str(), x, y, comp, data);
+		break;
+
+	case ETGA:
+		ret = stbi_write_tga(std::string(filename + ".tga").c_str(), x, y, comp, data);
+		break;
+
+	default:
+		ret = -1;
+		LOG(EError, "Invalid format!");
+		break;
+	}
+	return ret;
+}
+
+template<> int dumpMap(const BitmapF* bitmap, std::string filename, EBitmapType format, std::string bitmapname) {
+	if (bitmapname == "") {
+		bitmapname = filename;
+	}
+	LOG(EInfo, "Writing bitmap %s to \"%s\" ..", bitmapname.c_str(), filename.c_str());
+	int x = bitmap->getSize()(0);
+	int y = bitmap->getSize()(1);
+	int comp = bitmap->getChannelCount();
+	const Float *data = bitmap->getData();
+
+	return stbi_write_hdr(std::string(filename + ".hdr").c_str(), x, y, comp, data);
 }
 
 #endif
