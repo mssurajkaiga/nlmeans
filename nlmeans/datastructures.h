@@ -151,9 +151,6 @@ public:
 		channels = input->getChannelCount();
 		O* inputdata = input->getData();
 		data = convert<O, T>(inputdata, w*h*channels);
-		//data = new T[w*h*channels];
-		//T* thisdata = data;
-		//convert<O, T>(input, this);
 	}
 
 	TBitmap(const TBitmap<T> &input) {
@@ -194,6 +191,19 @@ public:
 		}
 		tmin = minValue;
 		tmax = maxValue;
+		return static_cast<T>(maxValue - minValue);
+	}
+
+	//get just the data range
+	T getDataRange() const {
+		const T *tdata = getData();
+		T maxValue = static_cast<T>(0), minValue = static_cast<T>(0);
+		for (int i = 0; i < size(0) * size(1) * channels; ++i, ++tdata) {
+			if (maxValue < *tdata)
+				maxValue = *tdata;
+			if (minValue > *tdata)
+				minValue = *tdata;
+		}
 		return static_cast<T>(maxValue - minValue);
 	}
 
@@ -277,12 +287,15 @@ public:
 	{
 		if (bitmap == NULL)
 			m_bitmap = new TBitmap<T>(size(0), size(1), 3);
+		int channelcount = m_bitmap->getChannelCount();
+		int x = m_bitmap->getSize()(0);
+		int y = m_bitmap->getSize()(1);
 		if (sppbitmap == NULL)
-			m_sppbitmap = new TBitmap<T>(size(0), size(1), 1);
+			m_sppbitmap = new TBitmap<T>(x, y, channelcount);
 		if (varbitmap == NULL)
-			m_varbitmap = new TBitmap<T>(size(0), size(1), 3);
+			m_varbitmap = new TBitmap<T>(x, y, channelcount);
 		if (varsbitmap == NULL)
-			m_varsbitmap = new TBitmap<T>(size(0), size(1), 3);
+			m_varsbitmap = new TBitmap<T>(x, y, channelcount);
 	}
 
 	TImageBlock(TImageBlock<T> *input) {

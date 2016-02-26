@@ -50,10 +50,6 @@ template<typename T> class DenoiserOutput {
 public:
 	long m_denoiseduration; // time in milliseconds to denoise the input
 	DenoiserOutput(TImageBlock<T> *denoisedoutput = NULL) : m_denoisedimage(denoisedoutput) {}
-	/*DenoiserOutput(DenoiserInput<T> *denoiserinput) {
-		m_denoisedimage = new TImageBlock<T>(denoiserinput->getImageBlocks()[0]);
-		m_denoisedimage->clear();
-	}*/
 	template<typename O> DenoiserOutput(DenoiserInput<O> *denoiserinput) {
 		m_denoisedimage = new TImageBlock<T>(denoiserinput->getImageBlocks()[0]);
 		m_denoisedimage->clear();
@@ -68,7 +64,41 @@ protected:
 
 template<typename I, typename O> class NLMeansDenoiser {
 public:
-	NLMeansDenoiser(int r = 7, int f = 3, float k = 0.45, float sigma= 1.0, int vr = 1, bool dumpm=true) : m_r(r), m_f(f), m_k(k),
+	// calculate parameters automatically
+	NLMeansDenoiser(Float sigma, bool dumpm = true) : m_sigma(sigma), m_dumpmaps(dumpm) {
+		if (sigma > 0.0f && sigma <= 25.0f) {
+			m_f = 1;
+			m_r = 10;
+			m_k = 0.55f;
+		}
+		else if (sigma > 25.0f && sigma <= 55.0f) {
+			m_f = 2;
+			m_r = 17;
+			m_k = 0.4f;
+		}
+		else if (sigma <= 100.0f) {
+			m_f = 3;
+			m_r = 17;
+			m_k = 0.35f;
+		}
+		else {
+			LOG(EWarn, "Variance cannot be above 100.f - reverting to default parameters!");
+			m_f = 1;
+			m_r = 10;
+			m_k = 0.55f;
+			m_sigma = 1.0f;
+		}
+
+		m_windowsize = 2 * m_r + 1;
+		m_patchsize = 2 * m_f + 1;
+		m_patch2 = static_cast<Float>(m_patchsize * m_patchsize);
+		m_sigma2 = m_sigma * m_sigma * m_patch2; // variance (sigma squared)
+		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
+		m_isinitialized = false;
+
+		dump();
+	}
+	NLMeansDenoiser(int r = 7, int f = 3, float k = 0.45f, Float sigma= 1.0f, int vr = 1, bool dumpm=true) : m_r(r), m_f(f), m_k(k),
 				 m_sigma(sigma), m_dumpmaps(dumpm) {
 
 		m_windowsize = 2 * m_r + 1;
@@ -92,6 +122,7 @@ public:
 	}
 
 	DenoiserOutput<O>* denoise(DenoiserInput<I> *in, bool patchbased = true, bool progressbar = true) {
+		LOG(EInfo, "Denoising started");
 		if (patchbased)
 			return patchBasedDenoise<I, O>(in, progressbar);
 		else
@@ -131,9 +162,6 @@ public:
 					for (auto i = 0; i < channelcountA; ++i)
 						filteredValueA[i] = 0.f;
 
-					//const Point2i tempmin(x - std::max((int)x - m_r, 0), y - (std::max((int)y - m_r, 0)));
-					//const Point2i tempmax(std::min((int)x + m_r, m_size(0) - 1) - x, std::min((int)y + m_r, m_size(1) - 1) - y);
-					//int width = std::min(std::min(tempmin(0), tempmin(1)), std::min(tempmax(0), tempmax(1)));
 					int width = computeSquareWindowWidth(x, y, m_size, m_r);
 					const Point2i windowmin(x - width, y - width), windowmax(x + width, y + width);
 
@@ -189,6 +217,7 @@ public:
 			return NULL;
 		DenoiserOutput<O> *finaloutput = new DenoiserOutput<O>(finaldenoised);
 		finaloutput->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
+		LOG(EInfo, "Denoising finished. Time taken = %d", finaloutput->m_denoiseduration);
 		return finaloutput;
 	}
 
@@ -196,13 +225,12 @@ public:
 		bool check = false;
 		int inputcount = in->getImageBlocks().size();
 		assert(inputcount > 0);
-		ImageBlockF *denoised = convert<I, Float>(in->getImageBlocks()[0]);
-		denoised->clear();
-
-		if (!m_isinitialized)
+				if (!m_isinitialized)
 			check = initialize(in);
 		assert(check);
-		const BitmapF *converted = m_imageblockA->getBitmap();
+		ImageBlockF *denoised = convert<I, Float>(in->getImageBlocks()[0]);
+		LOG(EInfo, "Data range of input after conversion to floating point representation = %f", denoised->getBitmap()->getDataRange());
+		denoised->clear();
 
 		std::string basefilename = in->getBaseFilename();
 		BitmapF *output = denoised->getBitmap();
@@ -267,7 +295,6 @@ public:
 								}
 							}
 
-
 					// current patch with maxWeight
 					for (int is = -m_f0; is <= m_f0; ++is) {
 						int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
@@ -281,24 +308,23 @@ public:
 					}
 					weightSumA += maxWeightA;
 
+					//TODO : FIX BUG CAUSING 1 PIXEL VERTICAL BAR ON THE RIGHT END!
+
 					// normalize average value when fTotalweight is not near zero
 					if (weightSumA > FLOAT_EPSILON) {
 
 						for (int is = -m_f0; is <= m_f0; ++is) {
 							int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
-							int ail0 = (y + is)*m_size(0) + x;
-							int ail = ail0 * channelcountA;
+							int ail = ((y + is)*m_size(0) + x) * channelcountA;
 
-							for (int ir = -m_f0 ; ir <= m_f0; ++ir) {
-								int iindex = aiindex + ir * channelcountA;
-								int il0 = ail0 + ir;
-								int il = il0 * channelcountA;
-
-								sppdata[il0] = sppdata[il0] + 1;
-								for (int k = 0; k < channelcountA; ++k)
-									outdata[il++] += denoisedData[iindex++] / weightSumA;
+							for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
+								int iindex = aiindex + ir;
+								int il = ail + ir;
+								outdata[il] += denoisedData[iindex] / weightSumA;
+								sppdata[il] += 1;
 							}
 						}
+
 					}
 
 					if (progressbar) {
@@ -310,15 +336,16 @@ public:
 			}
 		}
 
-		
+		LOG(EInfo, "Data range of denoised output before spp normalization = %f", output->getDataRange());
 		// normalize output according to no. of denoised values used per pixel
 		if (!normalizeBitmap(output, valuesPerPixel, output)) {
-			std::cout << "\nError : Normalization of denoised bitmap failed!\n";
+			LOG(EError, "Error : Normalization of denoised bitmap failed!");
 		}
-
+		LOG(EInfo, "Data range of denoised output after spp normalization = %f", output->getDataRange());
 		TImageBlock<O> *finaldenoised = convert<Float,O>(denoised);
 		if (finaldenoised == NULL)
 			return NULL;
+		LOG(EInfo, "Data range of denoised output after conversion to output representation = %f", finaldenoised->getBitmap()->getDataRange());
 		DenoiserOutput<O> *finaloutput = new DenoiserOutput<O>(finaldenoised);
 		finaloutput->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
 		return finaloutput;
@@ -326,18 +353,19 @@ public:
 
 
 protected:
-	// check validity of input, allocate space for temporary bitmaps and generate pre-denoising bitmaps
+	// check validity of input, allocate space for temporary bitmaps and adjust parameters
 	template<typename I> bool initialize(DenoiserInput<I> *in) {
 		int inputcount = in->getImageBlocks().size();
 		if (inputcount > 0) {
 			Float minValue = 0.f, maxValue = 0.f;
 			m_imageblockA = convert<I, Float>(in->getImageBlocks()[0]);
-			Float scale = static_cast<Float>(m_imageblockA->getBitmap()->getDataRange(minValue, maxValue)) / 255.f;
+			Float scale = static_cast<Float>(m_imageblockA->getBitmap()->getDataRange(minValue, maxValue));
+			LOG(ECustom, "Original scale of data = %f; MIN_VALUE = %f, MAX_VALUE = %f", scale, minValue, maxValue); 
+			scale /= 255.f;
 			m_size = m_imageblockA->getSize();
 			m_sigma *= scale;
 			m_sigma2 = m_sigma * m_sigma * m_imageblockA->getChannelCount();
 			m_h2 *= m_imageblockA->getChannelCount() * scale * scale; // normalizing the parameters
-			std::cout << "Normalization scale of data = " << scale << "\n";
 			return true;
 		}
 		m_imageblockA = NULL;
@@ -358,20 +386,13 @@ protected:
 		int width = std::min(pwidth, qwidth);
 
 		patchDistance = computePatchDistance(bitmap, p, q, width);
-		
-		//return exp(-std::max(0.f, patchDistance));
 		return exp(-std::max(0.f, patchDistance - 2.f * m_sigma2)/m_h2);
-		//return exp(-patchDistance/m_h2);
 	}
 
 	// for patch based weight computation
 	template<typename I> Float computeNeighborWeightContribution(const TBitmap<I> *bitmap/*, const TBitmap<I> *varbitmap*/, const Point2i &p, const Point2i &q, int width, bool print = false) const {
 		Float patchDistance = computePatchDistance(bitmap, p, q, width);
-		if (print) {
-			std::cout << "patchDistance = " << patchDistance << "\n";
-		}
 		return exp(-std::max(0.f, patchDistance - 2.f * m_sigma2) / m_h2);
-		//return exp(-patchDistance/m_h2);
 	}
 
 	template<typename I> inline Float computePatchDistance(const TBitmap<I> *bitmap,// const TBitmap<I> *varbitmap,

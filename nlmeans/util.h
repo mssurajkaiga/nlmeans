@@ -20,10 +20,14 @@ static Logger *logger = NULL;
 
 class Logger {
 public:
-	Logger(bool ltf = true, bool ltc = true, std::string filename = "") : logToFile(ltf), logToConsole(ltc), m_filename(filename) {
+	static void initialize(bool ltf = true, bool ltc = true, std::string filename = "") {
 		if (ltf && filename == "")
-			m_filename = "renderlog.txt";
-		logger = this;
+			filename = "renderlog.txt";
+		// clear existing log file with same filename
+		FILE * pFile;
+		pFile = fopen(filename.c_str(), "w");
+		fclose(pFile);
+		logger = new Logger(ltf, ltc, filename);
 	}
 
 	static Logger* getInstance() {
@@ -42,11 +46,28 @@ public:
 		va_end(args);
 	}
 
+	bool getLtf() { return logToFile; }
+	bool getLtc() { return logToConsole; }
+	std::string getFilename() { return m_filename;  }
+
 protected:
+	Logger(bool ltf = true, bool ltc = true, std::string filename = "") : logToFile(ltf), logToConsole(ltc), m_filename(filename) {
+		if (ltf && filename == "")
+			m_filename = "renderlog.txt";
+	}
+
+	Logger(Logger *logger) {
+		logToFile = logger->getLtf();
+		logToConsole = logger->getLtc();
+		m_filename = logger->getFilename();
+	}
+
 	void LogToConsole(ELogLevel level, const char *fmt, va_list args) {
 #if IS_WINDOWS
+		printf("%s: ",ELogLevelString[level]);
 		vprintf_s(fmt, args);
 #else
+		printf("%s: ", ELogLevelString[level].c_str());
 		vprintf(fmt, args);
 #endif
 		printf("\n");
@@ -55,6 +76,7 @@ protected:
 	void LogToFile(ELogLevel level, std::string filename, const char *fmt, va_list args) {
 		FILE * pFile;
 		pFile = fopen(filename.c_str(), "a+");
+		fprintf(pFile, "%s: ", ELogLevelString[level].c_str());
 		vfprintf(pFile, fmt, args);
 		fprintf(pFile, "\n");
 		fclose(pFile);
@@ -289,27 +311,33 @@ template<typename I, typename O> TImageBlock<O>* convert(TImageBlock<I> *input) 
 
 
 template <typename T> int dumpMap(const TBitmap<T> *bitmap, std::string filename, EBitmapType format = EPNG, std::string bitmapname = "") {
-	if (bitmapname == "") {
-		bitmapname = filename;
-	}
-	LOG(EInfo, "Writing bitmap %s to \"%s\" ..", bitmapname.c_str(), filename.c_str());
+	LOG(EInfo, "Writing bitmap %s", bitmapname.c_str(), filename.c_str());
 	int x = bitmap->getSize()(0);
 	int y = bitmap->getSize()(1);
 	int comp = bitmap->getChannelCount();
 	const T *data = bitmap->getData();
+	Uchar *chardata = NULL; Float *floatdata = NULL;
 	int ret;
 
 	switch (format) {
 	case EPNG:
-		ret = stbi_write_png(std::string(filename + ".png").c_str(), x, y, comp, data, 0); // pass 0 to let library calculate row_stride
+		chardata = convert<T, Uchar>(data, x * y * comp);
+		ret = stbi_write_png(std::string(filename + ".png").c_str(), x, y, comp, chardata, 0); // pass 0 to let library calculate row_stride
 		break;
 
 	case EBMP:
-		ret = stbi_write_bmp(std::string(filename + ".bmp").c_str(), x, y, comp, data);
+		chardata = convert<T, Uchar>(data, x * y * comp);
+		ret = stbi_write_bmp(std::string(filename + ".bmp").c_str(), x, y, comp, chardata);
 		break;
 
 	case ETGA:
-		ret = stbi_write_tga(std::string(filename + ".tga").c_str(), x, y, comp, data);
+		chardata = convert<T, Uchar>(data, x * y * comp);
+		ret = stbi_write_tga(std::string(filename + ".tga").c_str(), x, y, comp, chardata);
+		break;
+
+	case EHDR:
+		floatdata = convert<T, Float>(data, x * y * comp);
+		ret = stbi_write_hdr(std::string(filename + ".hdr").c_str(), x, y, comp, floatdata);
 		break;
 
 	default:
@@ -317,20 +345,10 @@ template <typename T> int dumpMap(const TBitmap<T> *bitmap, std::string filename
 		LOG(EError, "Invalid format!");
 		break;
 	}
-	return ret;
-}
-
-template<> int dumpMap(const BitmapF* bitmap, std::string filename, EBitmapType format, std::string bitmapname) {
-	if (bitmapname == "") {
-		bitmapname = filename;
+	if (ret != -1) {
+		LOG(EInfo, "Bitmap written to %s", filename.c_str());
 	}
-	LOG(EInfo, "Writing bitmap %s to \"%s\" ..", bitmapname.c_str(), filename.c_str());
-	int x = bitmap->getSize()(0);
-	int y = bitmap->getSize()(1);
-	int comp = bitmap->getChannelCount();
-	const Float *data = bitmap->getData();
-
-	return stbi_write_hdr(std::string(filename + ".hdr").c_str(), x, y, comp, data);
+	return ret;
 }
 
 #endif

@@ -18,7 +18,7 @@ public:
 	ModifiedNLMeansDenoiser(int r = 7, int f = 3, float k = 0.45, float sigma = 1.0, bool dumpm = true)
 		: NLMeansDenoiser<I,O>(r, f, k, sigma, dumpm) {
 
-		m_sigma2 = m_sigma * m_sigma;// *m_patch2; // variance (sigma squared)
+		m_sigma2 = m_sigma * m_sigma *m_patch2; // variance (sigma squared)
 		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
 		m_isinitialized = false;
 
@@ -35,14 +35,6 @@ public:
 		LOG(ECustom, "Variance cancelltion (sigma) = %f", m_sigma);
 		LOG(ECustom, "NOTE: DENOISER USES CROSS FILTERING ONLY WITH SAMPLE BITMAP AND USES SCALED MEAN SAMPLE VARIANCE BITMAP");
 	}
-
-	DenoiserOutput<O>* denoise(DenoiserInput<I> *in, bool patchbased = true, bool progressbar = true) {
-		if (patchbased)
-			return patchBasedDenoise<I, O>(in, progressbar);
-		else
-			return pixelBasedDenoise(in, progressbar);
-	}
-
 
 	// NOT IMPLEMENTED - disabled for now
 	DenoiserOutput<O>* pixelBasedDenoise(DenoiserInput<I> *in, bool progressbar = true) {
@@ -173,24 +165,18 @@ public:
 					if(weightSumB > FLOAT_EPSILON)
 						invWeightSumB = 1.f / weightSumB;
 
-						for (int is = -m_f0; is <= m_f0; ++is) {
-							int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
-							int ail0 = (y + is)*m_size(0) + x;
-							int ail = ail0 * channelcountA;
+					for (int is = -m_f0; is <= m_f0; ++is) {
+						int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
+						int ail = ((y + is)*m_size(0) + x) * channelcountA;
 
-							for (int ir = -m_f0; ir <= m_f0; ++ir) {
-								int iindex = aiindex + ir * channelcountA;
-								int il0 = ail0 + ir;
-								int il = il0 * channelcountA;
-
-								//sppdata[il0] = sppdata[il0] + 1;
-								for (int k = 0; k < channelcountA; ++k, ++iindex, ++il) {
-									outdata[il] += denoisedDataA[iindex] * invWeightSumA
-										+ denoisedDataB[iindex] * invWeightSumB;
-									sppdata[il] += 1;
-								}
-							}
+						for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
+							int iindex = aiindex + ir;
+							int il = ail + ir;
+							outdata[il] += denoisedDataA[iindex] * invWeightSumA
+								+ denoisedDataB[iindex] * invWeightSumB;
+							sppdata[il] += 1;
 						}
+					}
 
 					if (progressbar) {
 						progress += inc;
@@ -212,9 +198,9 @@ public:
 		TImageBlock<O> *finaldenoised = convert<Float, O>(denoised);
 		if (finaldenoised == NULL)
 			return NULL;
-		finaldenoised->getBitmap()->logToFile("denoised_output.txt");
 		DenoiserOutput<O> *finaloutput = new DenoiserOutput<O>(finaldenoised);
 		finaloutput->m_denoiseduration = (std::clock() - start) / CLOCKS_PER_SEC;
+		LOG(EInfo, "Denoising finished. Time taken = %d", finaloutput->m_denoiseduration);
 		return finaloutput;
 	}
 
