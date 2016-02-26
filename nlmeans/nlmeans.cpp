@@ -69,8 +69,8 @@ template<typename I, typename O> int denoiseNLMeans(std::string inputfile, EBitm
 
 int _tmain(int argc, char* argv[])
 {
-	int r = 5, f = 3;
-	Float k = 0.25f, sigma = 40.f, alpha = 0.4f;
+	int r = 12, f = 2;
+	Float k = 0.2f, sigma = 40.f, alpha = 0.1f;
 	bool dump = true, ltf = true, ltc = true;
 	std::string inputfile, outputfile;
 	// parse arguments
@@ -99,7 +99,7 @@ int _tmain(int argc, char* argv[])
 	//Logger::initialize(ltf, ltc, inputfile + ".log");
 
 	//return denoiseNLMeans<Uchar, Uchar>(inputfile, EPNG, outputfile, EPNG, r, f, k, sigma, dump);
-	inputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage"; outputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage_denoised6";
+	inputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage"; outputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage_denoised10";
 
 	Logger::initialize(ltf, ltc, inputfile + ".log");
 	return denoiseModifiedNLMeans<Float, Float>(inputfile, EHDR, outputfile, EHDR, r, f, k, alpha, dump);

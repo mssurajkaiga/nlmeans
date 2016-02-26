@@ -311,7 +311,10 @@ template<typename I, typename O> TImageBlock<O>* convert(TImageBlock<I> *input) 
 
 
 template <typename T> int dumpMap(const TBitmap<T> *bitmap, std::string filename, EBitmapType format = EPNG, std::string bitmapname = "") {
-	LOG(EInfo, "Writing bitmap %s", bitmapname.c_str(), filename.c_str());
+	if (bitmapname == ""){
+		bitmapname = filename;
+	}
+	LOG(EInfo, "Writing bitmap %s", bitmapname.c_str());
 	int x = bitmap->getSize()(0);
 	int y = bitmap->getSize()(1);
 	int comp = bitmap->getChannelCount();

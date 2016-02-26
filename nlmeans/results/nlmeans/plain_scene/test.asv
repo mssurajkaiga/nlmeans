@@ -1,0 +1,7 @@
+scene_name = 'street_scene';
+
+input1 = imread();
+input2 = imread('..\'+scene_name+'\denoised.png');
+diff = input2 - input1;
+image(diff*10);
+colorbar;

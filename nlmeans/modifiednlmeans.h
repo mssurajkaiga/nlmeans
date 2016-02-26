@@ -15,9 +15,18 @@ sigma = strength of variance cancellation and not variance value
 
 template<typename I, typename O> class ModifiedNLMeansDenoiser: public NLMeansDenoiser<I, O> {
 public:
-	ModifiedNLMeansDenoiser(int r = 7, int f = 3, float k = 0.45, float sigma = 1.0, bool dumpm = true)
-		: NLMeansDenoiser<I,O>(r, f, k, sigma, dumpm) {
+	ModifiedNLMeansDenoiser(int r = 7, int f = 3, float k = 0.45, Float sigma = 1.0, bool dumpm = true)
+		: NLMeansDenoiser<I, O>(r, f, k, sigma, dumpm, false) {
 
+		//rescale parameters since input values are according to the paper
+		if (m_sigma <= 1.f) {
+			m_sigma *= 100.f;
+			LOG(EInfo, "Rescaled variance cancellation (alpha) by 100.0");
+		}
+		else if (m_sigma >= 1.f && m_sigma <= 10.f){
+			m_sigma *= 10.f;
+			LOG(EInfo, "Rescaled variance cancellation (alpha) by 10.0");
+		}
 		m_sigma2 = m_sigma * m_sigma *m_patch2; // variance (sigma squared)
 		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
 		m_isinitialized = false;
@@ -32,8 +41,15 @@ public:
 		LOG(ECustom, "Patch Radius(f) = %d", m_f);
 		LOG(ECustom, "Patch size = %d", m_patchsize);
 		LOG(ECustom, "Damping Factor (k) = %f", m_k);
-		LOG(ECustom, "Variance cancelltion (sigma) = %f", m_sigma);
-		LOG(ECustom, "NOTE: DENOISER USES CROSS FILTERING ONLY WITH SAMPLE BITMAP AND USES SCALED MEAN SAMPLE VARIANCE BITMAP");
+		LOG(ECustom, "Variance cancellation (alpha) = %f", m_sigma);
+	}
+
+	DenoiserOutput<O>* denoise(DenoiserInput<I> *in, bool patchbased = true, bool progressbar = true) {
+		LOG(EInfo, "Denoising started");
+		if (patchbased)
+			return patchBasedDenoise<I, O>(in, progressbar);
+		else
+			return pixelBasedDenoise(in, progressbar);
 	}
 
 	// NOT IMPLEMENTED - disabled for now
@@ -107,20 +123,8 @@ public:
 							if (i != x && j != y) {
 								const Point2i q(i, j);
 
-								//float fDif = fiL2FloatDist(fpI, fpI, x, y, i, j, m_f0, iChannels, m_size(0), m_size(0));
-
-								//// dif^2 - 2 * fSigma^2 * N      dif is not normalized
-								//fDif = MAX(fDif - 2.0f * (float)icwl *  fSigma2, 0.0f);
-								//fDif = fDif / fH2;
-
-								//float fWeight = wxSLUT(fDif, fpLut);
 								Float weightA = computeNeighborWeightContribution(m_imageblockB->getBitmap(), m_filteredbuffervariance, p, q, m_f0);
 								Float weightB = computeNeighborWeightContribution(m_imageblockA->getBitmap(), m_filteredbuffervariance, p, q, m_f0);
-								//Float weightA = computeNeighborWeightContribution(m_imageblockB->getBitmap(), m_samplevarianceB, p, q, m_f0);
-								//Float weightB = computeNeighborWeightContribution(m_imageblockA->getBitmap(), m_samplevarianceA, p, q, m_f0);
-								/*if (x > 10 && y > 10 && x < 12 && y < 14) {
-									logFile << " i = " << i << " j = " << j << " weightA = " << weightA << "\n";
-								}*/
 
 								if (weightA > maxWeightA)
 									maxWeightA = weightA;
@@ -142,7 +146,6 @@ public:
 								}
 							}
 
-
 					// current patch with maxWeight
 					for (int is = -m_f0; is <= m_f0; ++is) {
 						int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
@@ -160,21 +163,50 @@ public:
 
 					Float invWeightSumA = 0.f, invWeightSumB = 0.f;
 					// normalize average value when fTotalweight is not near zero
-					if (weightSumA > FLOAT_EPSILON)
+					if (weightSumA > FLOAT_EPSILON) {
 						invWeightSumA = 1.f / weightSumA;
-					if(weightSumB > FLOAT_EPSILON)
+						if (weightSumB > FLOAT_EPSILON) {
+							invWeightSumB = 1.f / weightSumB;
+							for (int is = -m_f0; is <= m_f0; ++is) {
+								int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
+								int ail = ((y + is)*m_size(0) + x) * channelcountA;
+
+								for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
+									int iindex = aiindex + ir;
+									int il = ail + ir;
+									outdata[il] += denoisedDataA[iindex] * invWeightSumA
+										+ denoisedDataB[iindex] * invWeightSumB;
+									sppdata[il] += 2; // a sample from each of the two patches
+								}
+							}
+						}
+						else {
+							for (int is = -m_f0; is <= m_f0; ++is) {
+								int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
+								int ail = ((y + is)*m_size(0) + x) * channelcountA;
+
+								for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
+									int iindex = aiindex + ir;
+									int il = ail + ir;
+									outdata[il] += denoisedDataA[iindex] * invWeightSumA;
+									sppdata[il] += 1;
+								}
+
+							}
+						}
+					}
+					else if (weightSumB > FLOAT_EPSILON) {
 						invWeightSumB = 1.f / weightSumB;
+						for (int is = -m_f0; is <= m_f0; ++is) {
+							int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
+							int ail = ((y + is)*m_size(0) + x) * channelcountA;
 
-					for (int is = -m_f0; is <= m_f0; ++is) {
-						int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
-						int ail = ((y + is)*m_size(0) + x) * channelcountA;
-
-						for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
-							int iindex = aiindex + ir;
-							int il = ail + ir;
-							outdata[il] += denoisedDataA[iindex] * invWeightSumA
-								+ denoisedDataB[iindex] * invWeightSumB;
-							sppdata[il] += 1;
+							for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
+								int iindex = aiindex + ir;
+								int il = ail + ir;
+								outdata[il] += denoisedDataB[iindex] * invWeightSumB;
+								sppdata[il] += 1;
+							}
 						}
 					}
 
@@ -502,7 +534,7 @@ protected:
 		const T &varp, const T &varq) const {
 		//return (p - q) * (p - q);
 		return ((p - q) * (p - q) - m_sigma * (varp + min(varp, varq))) /
-			(T(FLT_EPSILON) + m_k * m_k * (varp + varq));
+			(static_cast<T>(FLT_EPSILON) + m_k * m_k * (varp + varq));
 	}
 
 	void dumpIntermediateBitmaps(std::string basefilename = "") {

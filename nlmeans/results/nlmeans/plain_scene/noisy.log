@@ -1,0 +1,10 @@
+ECustom: Denoiser: Non-Local Means Denoiser
+ECustom: Window Radius(r) = 17
+ECustom: Window size = 35
+ECustom: Patch Radius(f) = 2
+ECustom: Patch size = 5
+ECustom: Filter parameter(k) = 0.400000
+ECustom: Standard deviation (sigma) = 30.000000
+EInfo: Denoising started
+ECustom: Original scale of data = 255.000000; MIN_VALUE = 0.000000, MAX_VALUE = 255.000000
+EInfo: Data range of input after conversion to floating point representation = 255.000000

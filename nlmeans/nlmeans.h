@@ -65,7 +65,7 @@ protected:
 template<typename I, typename O> class NLMeansDenoiser {
 public:
 	// calculate parameters automatically
-	NLMeansDenoiser(Float sigma, bool dumpm = true) : m_sigma(sigma), m_dumpmaps(dumpm) {
+	NLMeansDenoiser(Float sigma, bool dumpm = true, bool dumpparams = true) : m_sigma(sigma), m_dumpmaps(dumpm) {
 		if (sigma > 0.0f && sigma <= 25.0f) {
 			m_f = 1;
 			m_r = 10;
@@ -96,9 +96,10 @@ public:
 		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
 		m_isinitialized = false;
 
-		dump();
+		if (dumpparams)
+			dump();
 	}
-	NLMeansDenoiser(int r = 7, int f = 3, float k = 0.45f, Float sigma= 1.0f, int vr = 1, bool dumpm=true) : m_r(r), m_f(f), m_k(k),
+	NLMeansDenoiser(int r = 7, int f = 3, float k = 0.45f, Float sigma = 1.0f, bool dumpm = true, bool dumpparams = true) : m_r(r), m_f(f), m_k(k),
 				 m_sigma(sigma), m_dumpmaps(dumpm) {
 
 		m_windowsize = 2 * m_r + 1;
@@ -108,7 +109,8 @@ public:
 		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
 		m_isinitialized = false;
 
-		dump();
+		if (dumpparams)
+			dump();
 	}
 
 	void inline dump() {
@@ -312,7 +314,7 @@ public:
 
 					// normalize average value when fTotalweight is not near zero
 					if (weightSumA > FLOAT_EPSILON) {
-
+						Float invWeightSumA = 1.f / weightSumA;
 						for (int is = -m_f0; is <= m_f0; ++is) {
 							int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcountA;
 							int ail = ((y + is)*m_size(0) + x) * channelcountA;
@@ -320,7 +322,7 @@ public:
 							for (int ir = -m_f0 * channelcountA; ir <= m_f0 * channelcountA; ++ir) {
 								int iindex = aiindex + ir;
 								int il = ail + ir;
-								outdata[il] += denoisedData[iindex] / weightSumA;
+								outdata[il] += denoisedData[iindex] * invWeightSumA;
 								sppdata[il] += 1;
 							}
 						}
