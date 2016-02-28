@@ -19,13 +19,17 @@ public:
 		: NLMeansDenoiser<I, O>(r, f, k, sigma, dumpm, false) {
 
 		//rescale parameters since input values are according to the paper
-		if (m_sigma <= 1.f) {
+		if (m_sigma < 1.f) {
 			m_sigma *= 100.f;
 			LOG(EInfo, "Rescaled variance cancellation (alpha) by 100.0");
 		}
-		else if (m_sigma >= 1.f && m_sigma <= 10.f){
+		else if (m_sigma >= 1.f && m_sigma < 10.f){
 			m_sigma *= 10.f;
 			LOG(EInfo, "Rescaled variance cancellation (alpha) by 10.0");
+		}
+		else if (m_sigma >= 100.f ){
+			m_sigma = 100.f;
+			LOG(EInfo, "Clamped variance cancellation (alpha) to 100.0");
 		}
 		m_sigma2 = m_sigma * m_sigma *m_patch2; // variance (sigma squared)
 		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
@@ -255,7 +259,7 @@ protected:
 		Float scaleB = static_cast<Float>(m_imageblockB->getBitmap()->getDataRange(minValue, maxValue)) / 255.f;
 		Assert(m_size == m_imageblockB->getSize(), "size mismatch between input imageblocks");
 		Assert(channelcount == m_imageblockB->getChannelCount(), "channel count mismatch between input imageblocks");
-		Float scale = (scaleA + scaleB / 2.f); // needs to be redone later!
+		Float scale = (scaleA + scaleB) / 2.f; // needs to be redone later!
 		std::cout << "Normalization scale of data = " << scale << "\n";
 		m_sigma *= scale;
 		m_sigma2 = m_sigma * m_sigma * channelcount;
@@ -337,20 +341,18 @@ protected:
 	//}
 
 	template<typename I> bool updateSampleVariance(const TImageBlock<I> *imageblock, TBitmap<I> *samplevariance) {
-		const TBitmap<I> *bitmap = imageblock->getBitmap(),
-			*varbitmap = imageblock->getVarBitmap(),
+		const TBitmap<I> *varbitmap = imageblock->getVarBitmap(),
 			*varsbitmap = imageblock->getVarsBitmap();
 		const TBitmap<I> *sppbitmap = imageblock->getSppBitmap();
 
-		if (bitmap == NULL || sppbitmap == NULL || varbitmap == NULL || varsbitmap == NULL)
+		if (sppbitmap == NULL || varbitmap == NULL || varsbitmap == NULL)
 			return false;
-		const int &channels = bitmap->getChannelCount();
-		const Vector2i &size = bitmap->getSize();
+		const int &channels = varbitmap->getChannelCount();
+		const Vector2i &size = varbitmap->getSize();
 		if (samplevariance->getSize() != size)
 			return false;
 
-		const I *dest = bitmap->getData(),
-			*destvar = varbitmap->getData(),
+		const I *destvar = varbitmap->getData(),
 			*destvars = varsbitmap->getData();
 		const I *destspp = sppbitmap->getData();
 		I *destsv = samplevariance->getData();
@@ -358,18 +360,18 @@ protected:
 		for (int i = 0; i < size(0) * size(1); ++i) {
 			if (*destspp > 1) {
 				for (int k = 0; k < channels; ++k) {
-					I bitmapvalue = *dest++;
 					I mean = *destvar / static_cast<I>(*destspp);
-					*destsv++ = std::abs((*destvars++ - *destvar++ * mean) / static_cast<I>(*destspp++ - 1));
+					*destsv++ = (*destvars++ - *destvar++ * mean) / static_cast<I>(*destspp++ - 1);
 				}
 			}
 			else {
 				for (int k = 0; k < channels; ++k) {
 					*destsv++ = 0.f; // no sufficient samples in this pixel to estimate variance
+					++destvar;
+					++destvars;
 					++destspp;
 				}
 			}
-			//++destspp;
 		}
 
 		return true;
@@ -389,24 +391,17 @@ protected:
 			*dest2 = input2->getData();
 		I *destO = output->getData();
 
-		//Assert(weight1->getChannelCount() == 1, "channel count of weight bitmap 1 is not 1!");
-		//Assert(weight2->getChannelCount() == 1, "channel count of weight bitmap 2 is not 1!");
-
 		const I *destW1 = weight1->getData(),
 			*destW2 = weight2->getData();
 
 		for (int i = 0; i < size(0) * size(1); ++i) {
-			for (int k = 0; k < channels; ++k) {
+			for (int k = 0; k < channels; ++k, ++destW1, ++destW2, ++dest1, ++dest2, ++destO) {
 				if (*destW1 == 0 && *destW2 == 0) {
-					*destO++ == static_cast<I>(0);
-					++destW1;
-					++destW2;
+					*destO == static_cast<I>(0);
 					continue;
 				}
-				*destO++ = (*dest1++ * *destW1 + *dest2++ * *destW2) / static_cast<I>(*destW1++ + *destW2++);
+				*destO = (*dest1 * *destW1 + *dest2 * *destW2) / static_cast<I>(*destW1 + *destW2);
 			}
-			//++destW1;
-			//++destW2;
 		}
 
 		return true;
@@ -443,8 +438,8 @@ protected:
 			}
 		}
 
-		/*LOG(ECustom, "Average Variance Ratio = %f %f %f", avgvarianceratio[0], avgvarianceratio[1],
-			avgvarianceratio[2]);*/
+		LOG(ECustom, "Average Variance Ratio = %f %f %f", avgvarianceratio[0], avgvarianceratio[1],
+			avgvarianceratio[2]);
 		return true;
 	}
 
@@ -476,11 +471,8 @@ protected:
 
 	// for patch based weight computation
 	template<typename I> Float computeNeighborWeightContribution(const TBitmap<I> *bitmap, const TBitmap<I> *varbitmap,
-		const Point2i &p, const Point2i &q, int width, bool print = false) const {
+		const Point2i &p, const Point2i &q, int width) const {
 		Float patchDistance = computePatchDistance(bitmap, varbitmap, p, q, width);
-		if (print) {
-			std::cout << "patchDistance = " << patchDistance << "\n";
-		}
 		return exp(-std::max(0.f, patchDistance));
 		//return exp(-std::max(0.f, patchDistance - 2.f * m_sigma2) / m_h2);
 		//return exp(-patchDistance/m_h2);
