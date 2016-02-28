@@ -45,6 +45,12 @@
     <ClInclude Include="stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="modifiednlmeans.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="datastructures.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

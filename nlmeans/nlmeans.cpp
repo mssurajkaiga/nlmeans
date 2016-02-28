@@ -69,7 +69,7 @@ template<typename I, typename O> int denoiseNLMeans(std::string inputfile, EBitm
 
 int _tmain(int argc, char* argv[])
 {
-	int r = 12, f = 2;
+	int r = 9, f = 4;
 	Float k = 0.2f, sigma = 40.f, alpha = 0.1f;
 	bool dump = true, ltf = true, ltc = true;
 	std::string inputfile, outputfile;

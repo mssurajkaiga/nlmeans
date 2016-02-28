@@ -48,4 +48,3 @@ An important point to note is that the scale of the vaariance cancellation param
 non-local means denoier configuration.
 The parameters k and alpha here can radically affect the denoising results. Setting k too high results in dark patches whilst high values of alpha results in blocky artifacts. A favorable value would be in the range of 0.05f to 0.3f.
 Unfortunately, there is no method yet to tweak the parameters automatically but perhaps the data from the variance estimate bitmaps could provide some knowledge on tweaking the settings {LOW PRIORITY}.
-The 
