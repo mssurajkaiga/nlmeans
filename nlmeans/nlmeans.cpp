@@ -4,8 +4,34 @@
 #include "stdafx.h"
 #include "nlmeans.h"
 #include "modifiednlmeans.h"
+#include "mltnlmeans.h"
 #include <string>
 #include <iostream>
+
+template<typename I, typename O> int denoiseMLTNLMeans(std::string inputfile, EBitmapType inputtype, std::string outputfile, EBitmapType outputtype, int r = 3, int f = 1, Float k = 0.7, Float sigma = 0.1, int numinstances = 1, bool dump = true) {
+	MLTNLMeansDenoiser<I, O> *denoiser = new MLTNLMeansDenoiser<I, O>(r, f, k, sigma, numinstances, dump);
+
+	DenoiserInput<I> *dInput = new DenoiserInput<I>(outputfile);
+	// load bitmaps into DenoiserInput
+	for (int i = 1; i <= numinstances; ++i) {
+		TBitmap<I> *inputBitmap = new TBitmap<I> ;
+		std::string stri = std::to_string(i);
+		Assert(inputBitmap->loadBitmap(inputfile + "_" + stri, inputtype), "Input bitmap no."+ stri +" failed to load!");
+		dInput->addImageBlock(new TImageBlock<I>(Point2i(0., 0.), inputBitmap->getSize(), 1, false, inputBitmap));
+	}
+
+	DenoiserOutput<O> *dOutput = denoiser->denoise(dInput);
+	LOG(EInfo, "Denoising finished. Time taken = %d seconds", dOutput->getDenoiseDuration());
+	dumpMap(dOutput->getDenoisedImage()->getBitmap(), outputfile, outputtype);
+
+	for (int i = 0; i < numinstances; ++i) {
+		dInput->getImageBlocks()[i]->getBitmap()->unloadBitmap();
+	}
+	std::cin.get();
+	_CrtDumpMemoryLeaks(); // prints mem leaks
+	return 0;
+}
+
 
 template<typename I, typename O> int denoiseModifiedNLMeans(std::string inputfile, EBitmapType inputtype, std::string outputfile, EBitmapType outputtype, int r = 3, int f = 1, Float k = 0.7, Float sigma = 0.1, bool dump = true) {
 	ModifiedNLMeansDenoiser<I, O> *denoiser = new ModifiedNLMeansDenoiser<I, O>(r, f, k, sigma, dump);
@@ -69,8 +95,8 @@ template<typename I, typename O> int denoiseNLMeans(std::string inputfile, EBitm
 
 int _tmain(int argc, char* argv[])
 {
-	int r = 9, f = 4;
-	Float k = 0.2f, sigma = 40.f, alpha = 0.1f;
+	int r = 10, f = 4;
+	Float k = 0.45f, sigma = 20.f, alpha = 1.f;
 	bool dump = true, ltf = true, ltc = true;
 	std::string inputfile, outputfile;
 	// parse arguments
@@ -94,13 +120,19 @@ int _tmain(int argc, char* argv[])
 	//inputfile = "test\\cbox_pssmlt_denoise_1st_stage_A"; outputfile = "test\\cbox_pssmlt_denoise_1st_stage_A_denoised_5";
 	//inputfile = "test\\noisy_alley_small"; outputfile = "test\\denoised_alley_small2";
 	//inputfile = "test\\matlab\\input_gaussian_40"; outputfile = "test\\matlab\\output_gaussian_40";
-	//inputfile = "results\\nlmeans\\alley_scene\\noisy"; outputfile = "results\\nlmeans\\alley_scene\\denoised";
+	//inputfile = "results\\nlmeans\\dice_scene\\noisy"; outputfile = "results\\nlmeans\\dice_scene\\denoised";
 	//inputfile = "results\\nlmeans\\white_gaussian_scene\\noisy"; outputfile = "results\\nlmeans\\white_gaussian_scene\\denoised";
+	//inputfile = "results\\modified_nlmeans\\veach_door_diffuse\\veach_door_diffuse_1st_stage"; outputfile = "results\\modified_nlmeans\\veach_door_diffuse\\veach_door_diffuse_1st_stage_denoised";
+	//Logger::initialize(ltf, ltc, inputfile + ".txt");
+
+	//return denoiseNLMeans<Uchar, Uchar>(inputfile, EHDR, outputfile, EHDR, r, f, k, sigma, dump);
+	//inputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage"; outputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage_denoised11";
+	//inputfile = "results\\modified_nlmeans\\veach_door_diffuse\\veach_door_diffuse_1st_stage"; outputfile = "results\\modified_nlmeans\\veach_door_diffuse\\veach_door_diffuse_1st_stage_denoised";
+
 	//Logger::initialize(ltf, ltc, inputfile + ".log");
+	//return denoiseModifiedNLMeans<Float, Float>(inputfile, EHDR, outputfile, EHDR, r, f, k, alpha, dump);
 
-	//return denoiseNLMeans<Uchar, Uchar>(inputfile, EPNG, outputfile, EPNG, r, f, k, sigma, dump);
-	inputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage"; outputfile = "test\\cbox_output\\cbox_pssmlt_denoise_1st_stage_denoised10";
-
-	Logger::initialize(ltf, ltc, inputfile + ".log");
-	return denoiseModifiedNLMeans<Float, Float>(inputfile, EHDR, outputfile, EHDR, r, f, k, alpha, dump);
+	inputfile = "results\\mlt_nlmeans\\veach_door_diffuse\\parallel_renders\\veach_door_diffuse"; outputfile = "results\\mlt_nlmeans\\veach_door_diffuse\\veach_door_diffuse_denoised";
+	Logger::initialize(ltf, ltc, inputfile + ".txt");
+	return denoiseMLTNLMeans<Float, Float>(inputfile, EHDR, outputfile, EHDR, r, f, k, alpha, 8, dump);
 }

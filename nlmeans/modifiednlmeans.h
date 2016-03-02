@@ -15,27 +15,33 @@ sigma = strength of variance cancellation and not variance value
 
 template<typename I, typename O> class ModifiedNLMeansDenoiser: public NLMeansDenoiser<I, O> {
 public:
-	ModifiedNLMeansDenoiser(int r = 7, int f = 3, float k = 0.45, Float sigma = 1.0, bool dumpm = true)
+	ModifiedNLMeansDenoiser(int r = 7, int f = 3, Float k = 0.45, Float sigma = 1.0, bool dumpm = true, bool dumpparams = true)
 		: NLMeansDenoiser<I, O>(r, f, k, sigma, dumpm, false) {
 
+		m_vR = M_R;
+		m_vF = M_F;
+		m_vSigma = M_ALPHA * 10.f;
+		m_vK = M_K;
+
 		//rescale parameters since input values are according to the paper
-		if (m_sigma < 1.f) {
+		if (m_sigma < 10.f) {
 			m_sigma *= 100.f;
 			LOG(EInfo, "Rescaled variance cancellation (alpha) by 100.0");
 		}
-		else if (m_sigma >= 1.f && m_sigma < 10.f){
+		/*else if (m_sigma >= 1.f && m_sigma < 10.f){
 			m_sigma *= 10.f;
 			LOG(EInfo, "Rescaled variance cancellation (alpha) by 10.0");
-		}
-		else if (m_sigma >= 100.f ){
-			m_sigma = 100.f;
-			LOG(EInfo, "Clamped variance cancellation (alpha) to 100.0");
+		}*/
+		if (m_sigma >= 500.f ){
+			m_sigma = 500.f;
+			LOG(EInfo, "Clamped variance cancellation (alpha) to 500.0");
 		}
 		m_sigma2 = m_sigma * m_sigma *m_patch2; // variance (sigma squared)
 		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
 		m_isinitialized = false;
 
-		dump();
+		if (dumpparams)
+			dump();
 	}
 
 	void inline dump() {
@@ -227,7 +233,7 @@ public:
 
 		// normalize output according to no. of denoised values used per pixel
 		if (!normalizeBitmap<Float, Float>(output, valuesPerPixel, output)) {
-		std::cout << "\nError : Normalization of denoised bitmap failed!\n";
+			LOG(EError, "Normalization of denoised bitmap failed!\n");
 		}
 
 		logFile.close();
@@ -275,13 +281,14 @@ protected:
 
 		m_samplevarianceB = new BitmapF(var->getSize(), var->getChannelCount());
 		Assert(updateSampleVariance(m_imageblockB, m_samplevarianceB), "updateSampleVariance failed for image block A!");
-		Assert(updateBufferVariance(m_samplevarianceA, m_samplevarianceB, m_buffervariance), "updateBufferVariance failed!");
+		//Assert(updateBufferVariance(m_samplevarianceA, m_samplevarianceB, m_buffervariance), "updateBufferVariance failed!");
+		Assert(updateBufferVariance(m_imageblockA->getBitmap(), m_imageblockB->getBitmap(), m_buffervariance), "updateBufferVariance failed!");
 		Assert(updateSampleVarianceVariance(), "updateSampleVarianceVariance failed!");
 		Assert(getWeightedMean(m_samplevarianceA, m_samplevarianceB, m_imageblockA->getSppBitmap(),
 			m_imageblockB->getSppBitmap(), m_meansamplevariance), "getWeightedMean failed!");
-		delete m_filteredbuffervariance;
-		m_filteredbuffervariance = m_meansamplevariance;
-		//Assert(crossfilter(m_buffervariance, m_meansamplevariance, m_samplevariancevariance, m_filteredbuffervariance));
+		//delete m_filteredbuffervariance;
+		//m_filteredbuffervariance = m_meansamplevariance;
+		Assert(crossfilter(m_buffervariance, m_meansamplevariance, m_samplevariancevariance, m_filteredbuffervariance));
 		return true;
 	}
 
@@ -290,63 +297,145 @@ protected:
 	bool isInitialized() const { return m_isinitialized; }
 
 	// denoise buffer variance estimate by cross filtering with weights from empirical sample variance estimate
-	//template<typename I> bool crossfilter(TBitmap<I> *buffervariance, TBitmap<I> *samplevariance, TBitmap<I> *samplevariancevariance, TBitmap<I> *filteredoutput) {
-	//	const Vector2i size = buffervariance->getSize();
-	//	Assert(size == samplevariance->getSize());
-	//	Assert(size == samplevariancevariance->getSize());
-	//	Assert(size == filteredoutput->getSize());
+	template<typename I> bool crossfilter(TBitmap<I> *buffervariance, TBitmap<I> *samplevariance, TBitmap<I> *samplevariancevariance, TBitmap<I> *filteredoutput) {
+		const Vector2i size = buffervariance->getSize();
+		int channelcount = buffervariance->getChannelCount();
+		Assert(size == samplevariance->getSize() && channelcount == samplevariance->getChannelCount());
+		Assert(size == samplevariancevariance->getSize() && channelcount == samplevariancevariance->getChannelCount());
+		Assert(size == filteredoutput->getSize() && channelcount == filteredoutput->getChannelCount());
 
-	//	// Temporarily swapping variables for the purpose of cross-filtering.. I swear, I'll return them to original values!
-	//	int temp_r = m_r;
-	//	int temp_f = m_f;
-	//	Float temp_sigma = m_sigma;
-	//	Float temp_k = m_k;
+		//Create temporary bitmap for storing values per pixel
+		TBitmap<I> *sppbitmap = new TBitmap<I>(buffervariance);
+		sppbitmap->clear();
 
-	//	m_r = m_vR;
-	//	m_f = m_vF;
-	//	m_sigma = m_vSigma;
-	//	m_k = m_vK;
+		// Temporarily swapping variables for the purpose of cross-filtering.. I swear, I'll return them to original values!
+		int temp_r = m_r;
+		int temp_f = m_f;
+		Float temp_sigma = m_sigma;
+		Float temp_k = m_k;
+		Float temp_sigma2 = m_sigma2;
+		Float temp_h2 = m_h2;
+		int temp_patchsize = m_patchsize;
+		int temp_patch2 = m_patch2;
 
-	//	// for each pixel compute weighted average from pixels in window
-	//	for (size_t y = 0; y < size.y; ++y) // iterate through each pixel in imageblock ignoring boundaries
-	//		for (size_t x = 0; x < size.x; ++x) {
-	//			// pixel being filtered
-	//			const Point2i p(x, y);
-	//			Float weightSum = 0.f;
-	//			Spectrum filteredValue(0.f);
-	//			// compute filter window coordinates
-	//			const Point2i windowmin(std::max((int)(x - m_r), 0), std::max((int)(y - m_r), 0));
-	//			const Point2i windowmax(std::min((int)(x + m_r), size.x - 1), std::min((int)(y + m_r), size.y - 1));
-	//			// loop through each pixel in window and compute filter weight on equivalent pixel in other imageblock
-	//			// and apply it to pixel in this imageblock - cross filtering
-	//			for (int i = windowmin.x; i <= windowmax.x; ++i)
-	//				for (int j = windowmin.y; j <= windowmax.y; ++j) {
-	//					const Point2i q(i, j);
-	//					//filter bitmap A using weights from B
-	//					//Float weightA = computeNeighborWeightContribution(in->m_imageblockB->getBitmap(), in->m_samplevarianceB, p, q);
-	//					Float weight = computeNeighborWeightContribution(samplevariance, samplevariancevariance, p, q);
-	//					weightSum += weight;
-	//					filteredValue += buffervariance->getPixel(q) * weight; //change getPixel to direct buffer access for speed
-	//				}
-	//			filteredoutput->setPixel(p, clamp(Spectrum(filteredValue / weightSum), Spectrum(0.), samplevariance->getPixel(p))); //change setPixel to direct buffer access for speed
-	//		}
+		m_r = m_vR;
+		m_f = m_vF;
+		m_sigma = m_vSigma;
+		m_k = m_vK;
+		m_patchsize = 2 * m_f + 1;
+		m_patch2 = m_patchsize * m_patchsize;
+		m_sigma2 = m_sigma * m_sigma *m_patch2; // variance (sigma squared)
+		m_h2 = m_k * m_k * m_sigma2; // filter parameter squared and normalized with patch size
+		Float scale = buffervariance->getDataRange();
+		m_sigma *= scale;
+		m_sigma2 = m_sigma * m_sigma * channelcount;
+		m_h2 *= channelcount * scale * scale; // normalizing the parameters
 
-	//	// As promised, I deliver the swap ;)
-	//	m_r = temp_r;
-	//	m_f = temp_f;
-	//	m_sigma = temp_sigma;
-	//	m_k = temp_k;
+		const Float *bitmapData = buffervariance->getData();
+		Float *outdata = filteredoutput->getData();
+		Float *sppdata = sppbitmap->getData();
 
-	//	return true;
-	//}
+		// for each pixel compute weighted average from pixels in window
+		for (int y = 0; y < size(1); ++y) {// iterate through each pixel in imageblock ignoring boundaries
+			// create patch to be filtered
+			Patch<Float> *denoisedPatch = new Patch<Float>(m_patchsize, m_patchsize, channelcount);
+			Float *denoisedData = denoisedPatch->getData();
+			for (int x = 0; x < size(0); ++x) {
+				// pixel being filtered
+				const Point2i p(x, y);
+				Float weightSum = 0.f, maxWeight = 0.f;
+
+				denoisedPatch->clear(0.f);
+				//compute window size
+				int m_f0 = min(m_f, min(size(0) - 1 - x, min(size(1) - 1 - y, min(x, y))));
+
+				// research zone depending on the boundary and the size of the window
+				int imin = max(x - m_r, m_f0);
+				int jmin = max(y - m_r, m_f0);
+
+				int imax = min(x + m_r, size(0) - 1 - m_f0);
+				int jmax = min(y + m_r, size(1) - 1 - m_f0);
+
+				// loop through each pixel in window and compute filter weight
+				for (int j = jmin; j <= jmax; ++j)
+					for (int i = imin; i <= imax; ++i)
+						if (i != x && j != y) {
+							const Point2i q(i, j);
+
+							Float weight = computeNeighborWeightContribution(samplevariance, samplevariancevariance, p, q, m_f0);
+
+							if (weight > maxWeight)
+								maxWeight = weight;
+							weightSum += weight;
+
+							for (int is = -m_f0; is <= m_f0; ++is) {
+								int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcount;
+								int ail = ((j + is)*size(0) + i) * channelcount;
+
+								for (int ir = -m_f0 * channelcount; ir <= m_f0 * channelcount; ++ir) {
+									int iindex = aiindex + ir;
+									int il = ail + ir;
+									denoisedData[iindex] += weight * bitmapData[il];
+								}
+							}
+						}
+
+				// current patch with maxWeight
+				for (int is = -m_f0; is <= m_f0; ++is) {
+					int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcount;
+					int ail = ((y + is)*size(0) + x) * channelcount;
+
+					for (int ir = -m_f0 * channelcount; ir <= m_f0 * channelcount; ++ir) {
+						int iindex = aiindex + ir;
+						int il = ail + ir;
+						denoisedData[iindex] += maxWeight * bitmapData[il];
+					}
+				}
+				weightSum += maxWeight;
+
+				Float invWeightSum = 0.f;
+				// normalize average value when fTotalweight is not near zero
+				if (weightSum > FLOAT_EPSILON) {
+					invWeightSum = 1.f / weightSum;
+					for (int is = -m_f0; is <= m_f0; ++is) {
+						int aiindex = ((m_f + is) * m_patchsize + m_f) * channelcount;
+						int ail = ((y + is)*size(0) + x) * channelcount;
+
+						for (int ir = -m_f0 * channelcount; ir <= m_f0 * channelcount; ++ir) {
+							int iindex = aiindex + ir;
+							int il = ail + ir;
+							outdata[il] += denoisedData[iindex] * invWeightSum;
+							sppdata[il] += 1;
+						}
+					}
+				}
+			}
+			delete denoisedPatch;
+		}
+
+		Assert(normalizeBitmap(filteredoutput, sppbitmap, filteredoutput), "Normalizing cross-filtered bitmap failed!");
+
+		// As promised, I deliver the swap ;)
+		m_r = temp_r;
+		m_f = temp_f;
+		m_sigma = temp_sigma;
+		m_k = temp_k;
+		m_sigma2 = temp_sigma2;
+		m_h2 = temp_h2;
+		m_patchsize = temp_patchsize;
+		m_patch2 = temp_patch2;
+
+		return true;
+	}
 
 	template<typename I> bool updateSampleVariance(const TImageBlock<I> *imageblock, TBitmap<I> *samplevariance) {
 		const TBitmap<I> *varbitmap = imageblock->getVarBitmap(),
 			*varsbitmap = imageblock->getVarsBitmap();
 		const TBitmap<I> *sppbitmap = imageblock->getSppBitmap();
 
-		if (sppbitmap == NULL || varbitmap == NULL || varsbitmap == NULL)
+		if (varbitmap == NULL || varsbitmap == NULL)
 			return false;
+
 		const int &channels = varbitmap->getChannelCount();
 		const Vector2i &size = varbitmap->getSize();
 		if (samplevariance->getSize() != size)
@@ -354,22 +443,31 @@ protected:
 
 		const I *destvar = varbitmap->getData(),
 			*destvars = varsbitmap->getData();
+
+		if (sppbitmap == NULL) {
+			for (int i = 0; i < size(0) * size(1) * channels; ++i, ++destsv) {
+				*destsv = 0.f; // no sufficient samples in this pixel to estimate variance
+			}
+			return true;
+		}
+
 		const I *destspp = sppbitmap->getData();
 		I *destsv = samplevariance->getData();
 
 		for (int i = 0; i < size(0) * size(1); ++i) {
 			if (*destspp > 1) {
-				for (int k = 0; k < channels; ++k) {
+				for (int k = 0; k < channels; ++k, ++destvar, ++destvars, ++destspp, ++destsv) {
 					I mean = *destvar / static_cast<I>(*destspp);
-					*destsv++ = (*destvars++ - *destvar++ * mean) / static_cast<I>(*destspp++ - 1);
+					*destsv = (*destvars - *destvar * mean) / static_cast<I>(*destspp - 1);
+					if (*destsv < 0.f) {
+						//LOG(EError, "Sample variance cannot be negative!! - check variance map computation in renderer at position %d", i);
+						*destsv = std::abs(*destsv);
+					}
 				}
 			}
 			else {
-				for (int k = 0; k < channels; ++k) {
-					*destsv++ = 0.f; // no sufficient samples in this pixel to estimate variance
-					++destvar;
-					++destvars;
-					++destspp;
+				for (int k = 0; k < channels; ++k, ++destvar, ++destvars, ++destspp, ++destsv) {
+					*destsv = 0.f; // no sufficient samples in this pixel to estimate variance
 				}
 			}
 		}
@@ -443,7 +541,7 @@ protected:
 		return true;
 	}
 
-	template<typename I> bool updateBufferVariance(TBitmap<I> *inputA, TBitmap<I> *inputB, TBitmap<I> *output) {
+	template<typename I> bool updateBufferVariance(const TBitmap<I> *inputA, const TBitmap<I> *inputB, TBitmap<I> *output) {
 		return computeBitmapDifference<2,I>(inputA, inputB, output, 0.5);
 	}
 
@@ -539,6 +637,8 @@ protected:
 	}
 
 protected:
+	int m_vR, m_vF;
+	Float m_vSigma, m_vK;
 	const ImageBlockF *m_imageblockA, *m_imageblockB;
 	BitmapF *m_samplevarianceA, *m_samplevarianceB,
 		*m_buffervariance, // estimate of pixel variance using squared difference of buffers

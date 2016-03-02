@@ -99,7 +99,7 @@ public:
 		if (dumpparams)
 			dump();
 	}
-	NLMeansDenoiser(int r = 7, int f = 3, float k = 0.45f, Float sigma = 1.0f, bool dumpm = true, bool dumpparams = true) : m_r(r), m_f(f), m_k(k),
+	NLMeansDenoiser(int r = 7, int f = 3, Float k = 0.45f, Float sigma = 1.0f, bool dumpm = true, bool dumpparams = true) : m_r(r), m_f(f), m_k(k),
 				 m_sigma(sigma), m_dumpmaps(dumpm) {
 
 		m_windowsize = 2 * m_r + 1;

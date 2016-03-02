@@ -146,16 +146,16 @@ inline int computeSquareWindowWidth(int xpos, int ypos, Vector2i bounds, int rad
 
 // utility function to compute difference between two bitmaps
 // absolute - compute absolute difference
-template<int C = 1, typename T> inline bool computeBitmapDifference(TBitmap<T> *inputA, TBitmap<T> *inputB, TBitmap<T> *output, const Float scale = 1.f, bool absolute = false) {
+template<int C = 1, typename T> inline bool computeBitmapDifference(const TBitmap<T> *inputA, const TBitmap<T> *inputB, TBitmap<T> *output, const Float scale = 1.f, bool absolute = false) {
 	const int &channels = inputA->getChannelCount();
 	const Vector2i &size = inputA->getSize();
 	if (inputB->getSize() != size || output->getSize() != size ||
 		inputB->getChannelCount() != channels || output->getChannelCount() != channels)
 		return false;
 
-	T *destA = inputA->getData(),
-		*destB = inputB->getData(),
-		*destO = output->getData();
+	const T *destA = inputA->getData(),
+		*destB = inputB->getData();
+	T *destO = output->getData();
 
 	if (C == 1)
 		for (int i = 0; i < size(0) * size(1); ++i) {
@@ -319,7 +319,7 @@ template <typename T> int dumpMap(const TBitmap<T> *bitmap, std::string filename
 	int y = bitmap->getSize()(1);
 	int comp = bitmap->getChannelCount();
 	const T *data = bitmap->getData();
-	Uchar *chardata = NULL; Float *floatdata = NULL;
+	Uchar *chardata = NULL; float *floatdata = NULL;
 	int ret;
 
 	switch (format) {
@@ -339,7 +339,7 @@ template <typename T> int dumpMap(const TBitmap<T> *bitmap, std::string filename
 		break;
 
 	case EHDR:
-		floatdata = convert<T, Float>(data, x * y * comp);
+		floatdata = convert<T, float>(data, x * y * comp);
 		ret = stbi_write_hdr(std::string(filename + ".hdr").c_str(), x, y, comp, floatdata);
 		break;
 

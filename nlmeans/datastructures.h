@@ -179,6 +179,15 @@ public:
 		}
 	}
 
+	//accumulate data from another bitmap after scaling it into current bitmap
+	void accumulate(TBitmap<T> *input, T scale = 1) {
+		T *tdata = static_cast<T*>(data);
+		const T *idata = input->getData();
+		for (int i = 0; i < size(0) * size(1) * channels; ++i, ++tdata, ++idata) {
+			*tdata += *idata * scale;
+		}
+	}
+
 	//stores min value of data and max value of data and returns the range of data
 	T getDataRange(T &tmin, T &tmax) const {
 		const T *tdata = getData();
@@ -230,8 +239,8 @@ public:
 		bool is_hdr = stbi_is_hdr(filename.c_str());
 		int x, y, n;
 		if (is_hdr){
-			Float *fdata = stbi_loadf(filename.c_str(), &x, &y, &n, 0);
-			data = convert<Float, T>(fdata, x*y*n);
+			float *fdata = stbi_loadf(filename.c_str(), &x, &y, &n, 0);
+			data = convert<float, T>(fdata, x*y*n);
 		}
 		else {
 			Uchar *udata = stbi_load(filename.c_str(), &x, &y, &n, 0);
